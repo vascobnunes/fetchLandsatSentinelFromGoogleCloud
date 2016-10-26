@@ -126,9 +126,7 @@ def main():
 	
 	################Run functions for LANDSAT Download	
 	LandsatMetadataFile=downloadLandsatMetadataFile(landsatMetadataUrl,options.outputcatalogs)
-	print LandsatMetadataFile
 	url=find_in_collection_metadata(LandsatMetadataFile,options.clouds,date_start,date_end,path,row)
-	print url
 	downloadFromGoogleCloud(url,options.output)
 	
 if __name__ == "__main__":
