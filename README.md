@@ -7,8 +7,8 @@ The script downloads the index.csv file listing all available landsat tiles.
 Then searches the file for one scene that matches user parameters.
 Once found it downloads the files for the bands (pancromatic bands are skipped here).
 
-Usage example:
-`       python fetchFromGoogleCloud.py -s 203031 -b LC8 -d 20140101 -f 20140630 -c 30 --output /LANDSAT --outputcatalogs /tmp`
+Usage example:\n
+`       python fetchFromGoogleCloud.py -s 203031 -b LC8 -d 20140101 -f 20140630 -c 30 --output /LANDSAT --outputcatalogs /tmp\n`
 
 Options:
 `         -h, --help            show this help message and exit`
