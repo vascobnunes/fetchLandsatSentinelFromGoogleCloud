@@ -15,23 +15,18 @@ Options:
 
 `         -h, --help            show this help message and exit`
 
-`         -s SCENE, --scene=SCENE`
+`         -s SCENE, --scene=SCENE               WRS2 coordinates of scene (ex 198030)`
 
-`                               WRS2 coordinates of scene (ex 198030)`
+`         -d START_DATE, --start_date=START_DATE start date, fmt('20131223')`
 
-`         -d START_DATE, --start_date=START_DATE`
+`         -f END_DATE, --end_date=END_DATE      end date, fmt('20131223')`
 
-`                               start date, fmt('20131223')`
+`         -c CLOUDS, --cloudcover=CLOUDS        Set a limit to the cloud cover of the image`
 
-`         -f END_DATE, --end_date=END_DATE`
+`         -b BIRD, --sat=BIRD                   Which satellite are you looking for`
 
-`                               end date, fmt('20131223')`
+`         --output=OUTPUT                       Where to download files`
 
-`         -c CLOUDS, --cloudcover=CLOUDS`
-`                               Set a limit to the cloud cover of the image`
-`         -b BIRD, --sat=BIRD   Which satellite are you looking for`
-`         --output=OUTPUT       Where to download files`
-`         --outputcatalogs=OUTPUTCATALOGS`
-`                               Where to download metadata catalog files`
+`         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
 
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
