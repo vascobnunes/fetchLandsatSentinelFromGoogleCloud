@@ -5,7 +5,7 @@ Find and download Landsat and Sentinel-2 data from the public Google Cloud
 
 The script downloads the index.csv file listing all available landsat tiles. 
 Then searches the file for one scene that matches user parameters.
-Once found it downloads the files for the bands (pancromatic bands are skipped here).
+Once found, it downloads the files for the bands (pancromatic bands are skipped here).
 
 Usage example:
 
