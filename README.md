@@ -14,12 +14,19 @@ Usage example:
 Options:
 
 `         -h, --help            show this help message and exit`
+
 `         -s SCENE, --scene=SCENE`
+
 `                               WRS2 coordinates of scene (ex 198030)`
+
 `         -d START_DATE, --start_date=START_DATE`
+
 `                               start date, fmt('20131223')`
+
 `         -f END_DATE, --end_date=END_DATE`
+
 `                               end date, fmt('20131223')`
+
 `         -c CLOUDS, --cloudcover=CLOUDS`
 `                               Set a limit to the cloud cover of the image`
 `         -b BIRD, --sat=BIRD   Which satellite are you looking for`
