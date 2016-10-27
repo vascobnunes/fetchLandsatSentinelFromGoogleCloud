@@ -15,21 +15,21 @@ class OptionParser (optparse.OptionParser):
 		  self.error("%s option not supplied" % option)
  
 #############################"Functions
-
 def downloadLandsatMetadataFile(url,outputdir):
-	print "Downloading Landsat Metadata file..."
 	theZippedFile=os.path.join(outputdir,'index.csv.gz')
 	theFile=os.path.join(outputdir,'index.csv')
 	if not os.path.isfile(theZippedFile):
+		print "Downloading Landsat Metadata file..."
 		#download the file
 		try:
-			subprocess.call('curl '+url+' -o '+os.path.join(outputdir,'index.csv.gz'), shell=True)	
+			subprocess.call('curl '+url+' -o '+theZippedFile, shell=True)	
 		except:
 			print "Some error occurred when trying to download the Landsat Metadata file!"
 	if not os.path.isfile(theFile):
+		print "Unzipping Landsat Metadata file..."
 		#unzip the file
 		try:
-			subprocess.call('gunzip -f '+os.path.join(outputdir,'index.csv.gz'))
+			subprocess.call(['gunzip',theZippedFile])
 		except:
 			print "Some error occurred when trying to unzip the Landsat Metadata file!"	
 	return theFile
