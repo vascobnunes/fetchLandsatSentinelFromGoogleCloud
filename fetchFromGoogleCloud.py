@@ -59,7 +59,7 @@ def find_in_collection_metadata(collection_file,cc_limit,date_start,date_end,wr2
 
 def downloadFromGoogleCloud(url,outputdir):
 	img=url.split("/")[len(url.split("/"))-1]
-	possible_bands=['B1.TIF','B2.TIF','B3.TIF','B4.TIF','B5.TIF','B6.TIF','B7.TIF','B9.TIF','BQA.TIF','MTL.txt']
+	possible_bands=['B1.TIF','B2.TIF','B3.TIF','B4.TIF','B5.TIF','B6.TIF','B6_VCID_1.TIF','B6_VCID_2.TIF','B7.TIF','B9.TIF','BQA.TIF','MTL.txt']
 	for bands in possible_bands:
 		completeUrl=url+"/"+img+"_"+bands
 		destinationDir=os.path.join(outputdir,img)
@@ -69,6 +69,7 @@ def downloadFromGoogleCloud(url,outputdir):
 		try:
 			subprocess.call('curl '+completeUrl+' -o '+destinationFile, shell=True)	
 		except:
+			os.remove(destinationFile)
 			continue
 			
 ######################################################################################
