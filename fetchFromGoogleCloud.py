@@ -34,7 +34,7 @@ def downloadLandsatMetadataFile(url,outputdir):
 			print "Some error occurred when trying to unzip the Landsat Metadata file!"	
 	return theFile
 
-def find_in_collection_metadata(collection_file,cc_limit,date_start,date_end,wr2path,wr2row):
+def find_in_collection_metadata(collection_file,cc_limit,date_start,date_end,wr2path,wr2row,sensor):
 	print "Searching for images in catalog..."
 	cloudcoverlist = []
 	cc_values = []	
@@ -45,7 +45,7 @@ def find_in_collection_metadata(collection_file,cc_limit,date_start,date_end,wr2
 			month_acq=int(row['DATE_ACQUIRED'][5:7])
 			day_acq  =int(row['DATE_ACQUIRED'][8:10])
 			acqdate=datetime.datetime(year_acq,month_acq, day_acq)
-			if 	int(row['WRS_PATH'])==int(wr2path) and int(row['WRS_ROW'])==int(wr2row) and float(row['CLOUD_COVER'])<=cc_limit and date_start<acqdate<date_end:
+			if 	int(row['WRS_PATH'])==int(wr2path) and int(row['WRS_ROW'])==int(wr2row) and row['SENSOR_ID']==sensor and float(row['CLOUD_COVER'])<=cc_limit and date_start<acqdate<date_end:
 				cloudcoverlist.append(row['CLOUD_COVER'] + '--' + row['BASE_URL'])
 				cc_values.append(float(row['CLOUD_COVER']))				
 			else:
@@ -83,7 +83,7 @@ def main():
 		print '	  '+sys.argv[0]+' [options]'
 		print "	 Help : ", prog, " --help"
 		print "		or : ", prog, " -h"
-		print "example: python %s -s 203031 -b LC8 -d 20151001 -f 20151231 --output /tmp/LANDSAT"%sys.argv[0]
+		print "example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output /tmp/LANDSAT"%sys.argv[0]
 
 		sys.exit(-1)
 	else:
@@ -98,7 +98,7 @@ def main():
 		parser.add_option("-c","--cloudcover", dest="clouds", action="store", type="float", \
 				help="Set a limit to the cloud cover of the image", default=100)				
 		parser.add_option("-b","--sat", dest="bird", action="store", type="choice", \
-				help="Which satellite are you looking for", choices=['LT5','LE7', 'LC8'], default='LC8')	
+				help="Which satellite are you looking for", choices=['TM','ETM', 'OLI_TIRS'], default='OLI_TIRS')	
 		parser.add_option("--output", dest="output", action="store", type="string", \
 				help="Where to download files",default='/tmp/LANDSAT')
 		parser.add_option("--outputcatalogs", dest="outputcatalogs", action="store", type="string", \
@@ -126,7 +126,7 @@ def main():
 	
 	################Run functions for LANDSAT Download	
 	LandsatMetadataFile=downloadLandsatMetadataFile(landsatMetadataUrl,options.outputcatalogs)
-	url=find_in_collection_metadata(LandsatMetadataFile,options.clouds,date_start,date_end,path,row)
+	url=find_in_collection_metadata(LandsatMetadataFile,options.clouds,date_start,date_end,path,row,produit)
 	downloadFromGoogleCloud(url,options.output)
 	
 if __name__ == "__main__":
