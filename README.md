@@ -8,6 +8,7 @@ Once found, it downloads the files for the bands (pancromatic bands are skipped 
 Usage example:
 
 `       python fetchFromGoogleCloud.py -s 203031 -b LC8 -d 20140101 -f 20140630 -c 30 --output /LANDSAT --outputcatalogs /tmp`
+
 `       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output /SENTINEL2 --outputcatalogs /tmp`
 
 Options:
