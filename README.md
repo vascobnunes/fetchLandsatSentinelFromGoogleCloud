@@ -1,9 +1,9 @@
 # FLSD - Fetch Landsat & Sentinel Data from google cloud
 Find and download Landsat and Sentinel-2 data from the public Google Cloud
 
-The script downloads the index.csv file listing all available landsat tiles. 
+The script downloads the index.csv file listing all available Landsat or Sentinel-2 tiles. 
 Then searches the file for one scene that matches user parameters.
-Once found, it downloads the files for the bands (pancromatic bands are skipped here).
+Once found, it downloads the image files.
 
 Usage example:
 
