@@ -7,9 +7,9 @@ Once found, it downloads the image files.
 
 Usage example:
 
-`       python fetchFromGoogleCloud.py -s 203031 -b LC8 -d 20140101 -f 20140630 -c 30 --output /LANDSAT --outputcatalogs /tmp`
+`       python fetchFromGoogleCloud.py -s 203031 -b OLI_TIRS -d 20150101 -f 20150630 -c 30 --output ~/LANDSAT --outputcatalogs /tmp`
 
-`       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output /SENTINEL2 --outputcatalogs /tmp`
+`       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output ~/SENTINEL2 --outputcatalogs /tmp`
 
 Options:
 
@@ -29,4 +29,5 @@ Options:
 
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
 
+Compatible with python 2.7 and 3.x.
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
