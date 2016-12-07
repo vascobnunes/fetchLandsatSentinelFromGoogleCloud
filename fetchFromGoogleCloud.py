@@ -15,10 +15,10 @@ class OptionParser (optparse.OptionParser):
 		  self.error("%s option not supplied" % option)
  
 #############################"Functions
-def downloadMetadataFile(url,outputdir):
+def downloadMetadataFile(url,outputdir,program):
 	#This function downloads and unzips the catalogue files
-	theZippedFile=os.path.join(outputdir,'index.csv.gz')
-	theFile=os.path.join(outputdir,'index.csv')
+	theZippedFile=os.path.join(outputdir,'index_'+program+'.csv.gz')
+	theFile=os.path.join(outputdir,'index_'+program+'.csv')
 	if not os.path.isfile(theZippedFile):
 		print("Downloading Metadata file...")
 		#download the file
@@ -189,14 +189,14 @@ def main():
 	################Run functions	
 	
 	if (produit=='S2'):
-		Sentinel2MetadataFile=downloadMetadataFile(sentinel2MetadataUrl,options.outputcatalogs)
+		Sentinel2MetadataFile=downloadMetadataFile(sentinel2MetadataUrl,options.outputcatalogs,'Sentinel')
 		url=findS2InCollectionMetadata(Sentinel2MetadataFile,options.clouds,date_start,date_end,options.scene)
 		if url=='':
 			print("No image was found with the criteria you chose! Please review your parameters and try again.")
 		else:
 			downloadS2FromGoogleCloud(url,options.output)
 	else:
-		LandsatMetadataFile=downloadMetadataFile(landsatMetadataUrl,options.outputcatalogs)
+		LandsatMetadataFile=downloadMetadataFile(landsatMetadataUrl,options.outputcatalogs,'Landsat')
 		url=findLandsatInCollectionMetadata(LandsatMetadataFile,options.clouds,date_start,date_end,path,row,produit)
 		if url=='':
 			print("No image was found with the criteria you chose! Please review your parameters and try again.")
