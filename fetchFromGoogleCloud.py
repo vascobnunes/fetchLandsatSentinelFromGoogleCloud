@@ -186,16 +186,22 @@ def main():
 	landsatMetadataUrl='http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
 	sentinel2MetadataUrl='http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'	
 	
-	################Run functions for LANDSAT Download	
+	################Run functions	
 	
 	if (produit=='S2'):
 		Sentinel2MetadataFile=downloadMetadataFile(sentinel2MetadataUrl,options.outputcatalogs)
 		url=findS2InCollectionMetadata(Sentinel2MetadataFile,options.clouds,date_start,date_end,options.scene)
-		downloadS2FromGoogleCloud(url,options.output)
+		if url=='':
+			print("No image was found with the criteria you chose! Please review your parameters and try again.")
+		else:
+			downloadS2FromGoogleCloud(url,options.output)
 	else:
 		LandsatMetadataFile=downloadMetadataFile(landsatMetadataUrl,options.outputcatalogs)
 		url=findLandsatInCollectionMetadata(LandsatMetadataFile,options.clouds,date_start,date_end,path,row,produit)
-		downloadLandsatFromGoogleCloud(url,options.output)
+		if url=='':
+			print("No image was found with the criteria you chose! Please review your parameters and try again.")
+		else:		
+			downloadLandsatFromGoogleCloud(url,options.output)
 	
 if __name__ == "__main__":
 	main()	
