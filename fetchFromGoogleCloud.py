@@ -20,24 +20,24 @@ def downloadMetadataFile(url,outputdir):
 	theZippedFile=os.path.join(outputdir,'index.csv.gz')
 	theFile=os.path.join(outputdir,'index.csv')
 	if not os.path.isfile(theZippedFile):
-		print "Downloading Metadata file..."
+		print("Downloading Metadata file...")
 		#download the file
 		try:
 			subprocess.call('curl '+url+' -o '+theZippedFile, shell=True)	
 		except:
-			print "Some error occurred when trying to download the Metadata file!"
+			print("Some error occurred when trying to download the Metadata file!")
 	if not os.path.isfile(theFile):
-		print "Unzipping Metadata file..."
+		print("Unzipping Metadata file...")
 		#unzip the file
 		try:
 			subprocess.call(['gunzip',theZippedFile])
 		except:
-			print "Some error occurred when trying to unzip the Metadata file!"	
+			print("Some error occurred when trying to unzip the Metadata file!")	
 	return theFile
 
 def findLandsatInCollectionMetadata(collection_file,cc_limit,date_start,date_end,wr2path,wr2row,sensor):
 	#This function queries the Landsat index catalogue and retrieves an url for the best image found
-	print "Searching for images in catalog..."
+	print("Searching for images in catalog...")
 	cloudcoverlist = []
 	cc_values = []	
 	with open(collection_file) as csvfile:
@@ -61,7 +61,7 @@ def findLandsatInCollectionMetadata(collection_file,cc_limit,date_start,date_end
 
 def findS2InCollectionMetadata(collection_file,cc_limit,date_start,date_end,tile):
 	#This function queries the sentinel2 index catalogue and retrieves an url for the best image found
-	print "Searching for images in catalog..."
+	print("Searching for images in catalog...")
 	cloudcoverlist = []
 	cc_values = []	
 	with open(collection_file) as csvfile:
@@ -140,11 +140,11 @@ def main():
 	################Read arguments
 	if len(sys.argv) == 1:
 		prog = os.path.basename(sys.argv[0])
-		print '	  '+sys.argv[0]+' [options]'
-		print "	 Help : ", prog, " --help"
-		print "		or : ", prog, " -h"
-		print "example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output /tmp/LANDSAT"%sys.argv[0]
-		print "example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output /tmp/SENTINEL2"%sys.argv[0]		
+		print('	 ', sys.argv[0], '[options]')
+		print("	 Help :", prog, "--help")
+		print("		or :", prog, "-h")
+		print("example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output /tmp/LANDSAT" % sys.argv[0])
+		print("example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output /tmp/SENTINEL2" % sys.argv[0])		
 
 		sys.exit(-1)
 	else:
