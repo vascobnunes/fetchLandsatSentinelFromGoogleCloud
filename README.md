@@ -7,9 +7,17 @@ Once found, it downloads the image files.
 
 Usage example:
 
+ - UNIX:
+
 `       python fetchFromGoogleCloud.py -s 203031 -b OLI_TIRS -d 20150101 -f 20150630 -c 30 --output ~/LANDSAT --outputcatalogs /tmp`
 
 `       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output ~/SENTINEL2 --outputcatalogs /tmp`
+
+ - WINDOWS:
+
+`       python fetchFromGoogleCloud.py -s 203031 -b OLI_TIRS -d 20150101 -f 20150630 -c 30 --output %TEMP%\LANDSAT --outputcatalogs %TEMP%\LANDSAT`
+
+`       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output %TEMP%\SENTINEL2 --outputcatalogs %TEMP%\SENTINEL2`
 
 Options:
 

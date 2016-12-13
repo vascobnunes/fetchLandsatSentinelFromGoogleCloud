@@ -30,10 +30,15 @@ def downloadMetadataFile(url,outputdir,program):
 		print("Unzipping Metadata file...")
 		#unzip the file
 		try:
-			subprocess.call(['gunzip',theZippedFile])
+			if sys.platform.startswith('win'):	  #W32
+				subprocess.call('7z e -so '+theZippedFile+' > '+ theFile, shell=True)  #W32
+			elif sys.platform.startswith('linux'):    #UNIX	
+				subprocess.call(['gunzip',theZippedFile])
 		except:
 			print("Some error occurred when trying to unzip the Metadata file!")	
 	return theFile
+	
+	
 
 def findLandsatInCollectionMetadata(collection_file,cc_limit,date_start,date_end,wr2path,wr2row,sensor):
 	#This function queries the Landsat index catalogue and retrieves an url for the best image found
@@ -140,11 +145,19 @@ def main():
 	################Read arguments
 	if len(sys.argv) == 1:
 		prog = os.path.basename(sys.argv[0])
-		print('	 ', sys.argv[0], '[options]')
-		print("	 Help :", prog, "--help")
-		print("		or :", prog, "-h")
-		print("example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output /tmp/LANDSAT" % sys.argv[0])
-		print("example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output /tmp/SENTINEL2" % sys.argv[0])		
+		if sys.platform.startswith('win'):	  #W32
+			print('python %s [options]' % sys.argv[0])
+			print("Help : python %s --help" % sys.argv[0])
+			print("  or : python %s -h" % sys.argv[0])
+			print("example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output C:\\temp\\LANDSAT" % sys.argv[0])
+			print("example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output C:\\temp\\SENTINEL2" % sys.argv[0])	
+		elif sys.platform.startswith('linux'):    #UNIX	
+			print('	 ', sys.argv[0], '[options]')
+			print("	 Help :", prog, "--help")
+			print("		or :", prog, "-h")
+			print("example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output /tmp/LANDSAT" % sys.argv[0])
+			print("example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output /tmp/SENTINEL2" % sys.argv[0])	
+		
 
 		sys.exit(-1)
 	else:
@@ -159,11 +172,15 @@ def main():
 		parser.add_option("-c","--cloudcover", dest="clouds", action="store", type="float", \
 				help="Set a limit to the cloud cover of the image", default=100)				
 		parser.add_option("-b","--sat", dest="bird", action="store", type="choice", \
-				help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], default='OLI_TIRS')	
+				help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], default='OLI_TIRS')
+		if sys.platform.startswith('win'):	  #W32 
+			tempPath = os.environ['TEMP']
+		elif sys.platform.startswith('linux'):    #UNIX	
+			tempPath = '/tmp/'
 		parser.add_option("--output", dest="output", action="store", type="string", \
-				help="Where to download files",default='/tmp/')
+				help="Where to download files",default=tempPath)
 		parser.add_option("--outputcatalogs", dest="outputcatalogs", action="store", type="string", \
-				help="Where to download metadata catalog files",default='/tmp/')					
+				help="Where to download metadata catalog files",default=tempPath)					
 
 		(options, args) = parser.parse_args()
 		parser.check_required("-s")
