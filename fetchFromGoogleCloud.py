@@ -93,7 +93,7 @@ def downloadLandsatFromGoogleCloud(url, outputdir):
     # this function downloads the Landsat image files
     img = url.split("/")[len(url.split("/")) - 1]
     possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF',
-                      'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+                      'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
     for bands in possible_bands:
         completeUrl = url + "/" + img + "_" + bands
         destinationDir = os.path.join(outputdir, img)
