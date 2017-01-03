@@ -9,16 +9,17 @@ Usage example:
 
  - UNIX:
 
-`       python fetchFromGoogleCloud.py -s 203031 -b OLI_TIRS -d 20150101 -f 20150630 -c 30 --output ~/LANDSAT --outputcatalogs /tmp`
+`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 --output ~/LANDSAT --outputcatalogs /tmp`
 
-`       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output ~/SENTINEL2 --outputcatalogs /tmp`
+`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 --output ~/SENTINEL2 --outputcatalogs /tmp`
 
  - WINDOWS:
 
-`       python fetchFromGoogleCloud.py -s 203031 -b OLI_TIRS -d 20150101 -f 20150630 -c 30 --output %TEMP%\LANDSAT --outputcatalogs %TEMP%\LANDSAT`
+`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 --output %TEMP%\LANDSAT --outputcatalogs %TEMP%\LANDSAT`
 
-`       python fetchFromGoogleCloud.py -s 44UPU -b S2 -d 20161001 -f 20161231 --output %TEMP%\SENTINEL2 --outputcatalogs %TEMP%\SENTINEL2`
+`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 --output %TEMP%\SENTINEL2 --outputcatalogs %TEMP%\SENTINEL2`
 
+<<<<<<< HEAD
 Options:
 
 `         -h, --help            show this help message and exit`
@@ -36,6 +37,9 @@ Options:
 `         --output=OUTPUT                       Where to download files`
 
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
+=======
+Run the script with -h switch for more help usage.
+>>>>>>> origin/master
 
 Compatible with python 2.7 and 3.x.
 

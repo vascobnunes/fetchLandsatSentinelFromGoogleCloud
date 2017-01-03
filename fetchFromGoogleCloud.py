@@ -1,18 +1,10 @@
-import subprocess
+import argparse
+import csv
 import datetime
 import os
+import subprocess
 import sys
-import csv
-import optparse
-
-
-class OptionParser (optparse.OptionParser):
-
-    def check_required(self, opt):
-        option = self.get_option(opt)
-        # Assumes the option's 'default' is set to None!
-        if getattr(self.values, option.dest) is None:
-            self.error("%s option not supplied" % option)
+import tempfile
 
 
 def downloadMetadataFile(url, outputdir, program):
@@ -142,82 +134,31 @@ def downloadS2FromGoogleCloud(url, outputdir):
 
 
 def main():
-    # Read arguments
-    if len(sys.argv) == 1:
-        prog = os.path.basename(sys.argv[0])
-        if sys.platform.startswith('win'):  # W32
-            print('python %s [options]' % sys.argv[0])
-            print("Help : python %s --help" % sys.argv[0])
-            print("  or : python %s -h" % sys.argv[0])
-            print("example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output C:\\temp\\LANDSAT" %
-                  sys.argv[0])
-            print("example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output C:\\temp\\SENTINEL2" %
-                  sys.argv[0])
-        elif sys.platform.startswith('linux'):  # UNIX
-            print('	 ', sys.argv[0], '[options]')
-            print("	 Help :", prog, "--help")
-            print("		or :", prog, "-h")
-            print("example: python %s -s 203031 -b OLI_TIRS -d 20151001 -f 20151231 --output /tmp/LANDSAT" %
-                  sys.argv[0])
-            print("example: python %s -s 44UPU -b S2 -d 20161001 -f 20161231 --output /tmp/SENTINEL2" % sys.argv[0])
+    parser = argparse.ArgumentParser(description="Find and download Landsat and Sentinel-2 data from the public Google Cloud")
+    parser.add_argument("scene", help="WRS2 coordinates of scene (ex 198030)")
+    parser.add_argument("sat", help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], default='OLI_TIRS')
+    parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
+    parser.add_argument("end_date", help="End date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
+    parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
+    parser.add_argument("--output", help="Where to download files", default=tempfile.gettempdir())
+    parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=tempfile.gettempdir())
+    options = parser.parse_args()
 
-        sys.exit(-1)
-    else:
-        usage = "usage: %prog [options] "
-        parser = OptionParser(usage=usage)
-        parser.add_option("-s", "--scene", dest="scene", action="store", type="string",
-                          help="WRS2 coordinates of scene (ex 198030)", default=None)
-        parser.add_option("-d", "--start_date", dest="start_date", action="store", type="string",
-                          help="start date, fmt('20131223')")
-        parser.add_option("-f", "--end_date", dest="end_date", action="store", type="string",
-                          help="end date, fmt('20131223')")
-        parser.add_option("-c", "--cloudcover", dest="clouds", action="store", type="float",
-                          help="Set a limit to the cloud cover of the image", default=100)
-        parser.add_option("-b", "--sat", dest="bird", action="store", type="choice",
-                          help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], default='OLI_TIRS')
-        if sys.platform.startswith('win'):  # W32
-            tempPath = os.environ['TEMP']
-        elif sys.platform.startswith('linux'):  # UNIX
-            tempPath = '/tmp/'
-        parser.add_option("--output", dest="output", action="store", type="string",
-                          help="Where to download files", default=tempPath)
-        parser.add_option("--outputcatalogs", dest="outputcatalogs", action="store", type="string",
-                          help="Where to download metadata catalog files", default=tempPath)
-
-        (options, args) = parser.parse_args()
-        parser.check_required("-s")
-        parser.check_required("-d")
-        parser.check_required("-f")
-
-    rep = options.output
-
-    produit = options.bird
-    path = options.scene[0:3]
-    row = options.scene[3:6]
-    year_start = int(options.start_date[0:4])
-    month_start = int(options.start_date[4:6])
-    day_start = int(options.start_date[6:8])
-    date_start = datetime.datetime(year_start, month_start, day_start)
-    year_end = int(options.end_date[0:4])
-    month_end = int(options.end_date[4:6])
-    day_end = int(options.end_date[6:8])
-    date_end = datetime.datetime(year_end, month_end, day_end)
-    landsatMetadataUrl = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
-    sentinel2MetadataUrl = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
+    LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
+    SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
 
     # Run functions
-
-    if (produit == 'S2'):
-        Sentinel2MetadataFile = downloadMetadataFile(sentinel2MetadataUrl, options.outputcatalogs, 'Sentinel')
-        url = findS2InCollectionMetadata(Sentinel2MetadataFile, options.clouds, date_start, date_end, options.scene)
+    if options.sat == 'S2':
+        sentinel2_metadata_file = downloadMetadataFile(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel')
+        url = findS2InCollectionMetadata(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, options.scene)
         if url == '':
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
             downloadS2FromGoogleCloud(url, options.output)
     else:
-        LandsatMetadataFile = downloadMetadataFile(landsatMetadataUrl, options.outputcatalogs, 'Landsat')
-        url = findLandsatInCollectionMetadata(LandsatMetadataFile, options.clouds,
-                                              date_start, date_end, path, row, produit)
+        landsat_metadata_file = downloadMetadataFile(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
+        url = findLandsatInCollectionMetadata(landsat_metadata_file, options.cloudcover,
+                                              options.start_date, options.end_date, options.scene[0:3], options.scene[3:6], options.sat)
         if url == '':
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
