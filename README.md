@@ -23,7 +23,7 @@ Options:
 
 `         -h, --help            show this help message and exit`
 
-`         -s SCENE, --scene=SCENE               WRS2 coordinates of scene (ex 198030)`
+`         -s SCENE, --scene=SCENE               TileID of scene (ex. 198030 for Landsat or 44UPU for Sentinel2)`
 
 `         -d START_DATE, --start_date=START_DATE start date, fmt('20131223')`
 
