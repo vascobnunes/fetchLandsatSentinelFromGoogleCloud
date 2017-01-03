@@ -19,16 +19,15 @@ Usage example:
 
 `       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 --output %TEMP%\SENTINEL2 --outputcatalogs %TEMP%\SENTINEL2`
 
-<<<<<<< HEAD
 Options:
 
 `         -h, --help            show this help message and exit`
 
 `         -s SCENE, --scene=SCENE               TileID of scene (ex. 198030 for Landsat or 44UPU for Sentinel2)`
 
-`         -d START_DATE, --start_date=START_DATE start date, fmt('20131223')`
+`         -d START_DATE, --start_date=START_DATE start date, fmt('2013-12-23')`
 
-`         -f END_DATE, --end_date=END_DATE      end date, fmt('20131223')`
+`         -f END_DATE, --end_date=END_DATE      end date, fmt('2013-12-23')`
 
 `         -c CLOUDS, --cloudcover=CLOUDS        Set a limit to the cloud cover of the image`
 
@@ -37,9 +36,8 @@ Options:
 `         --output=OUTPUT                       Where to download files`
 
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
-=======
+
 Run the script with -h switch for more help usage.
->>>>>>> origin/master
 
 Compatible with python 2.7 and 3.x.
 
