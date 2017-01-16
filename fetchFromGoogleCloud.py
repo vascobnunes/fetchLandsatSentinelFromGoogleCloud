@@ -35,13 +35,13 @@ def downloadMetadataFile(url, outputdir, program, verbose=False):
 
 
 def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_end, wr2path, wr2row, sensor, best = False, latest = False):
-    # This function queries the Landsat index catalogue and retrieves an url for the best image found
+    # This function queries the Landsat index catalogue and retrieves urls for the best images found
     
     assert not (best and latest), 'Specify either the "best" or "latest" image, not both.'
     
     print("Searching for Landsat-{0} images in catalog...".format(sensor))
     cc_values = []
-    urls = []
+    all_urls = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -50,14 +50,20 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
             day_acq = int(row['DATE_ACQUIRED'][8:10])
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if int(row['WRS_PATH']) == int(wr2path) and int(row['WRS_ROW']) == int(wr2row) and row['SENSOR_ID'] == sensor and float(row['CLOUD_COVER']) <= cc_limit and date_start < acqdate < date_end:
-                urls.append(row['BASE_URL'])
+                all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
 
+    # sort url list by increasing acqdate
+    all_urls = [x for (y, x) in sorted(zip(acqdate, url))]
+
+    # if latest is True, take the last element of this sorted list
     if latest and (len(urls) > 0):
         url = [ 'http://storage.googleapis.com/' + urls[-1].replace('gs://', '') ]
     else:
         url = []
         for i, u in enumerate(urls):
+            # if best is True, then keep only those elements with the minimum cloud cover
+            # can be greater than 1 (e.g. if multiple scenes have 0% cloud cover)
             if best: 
                 if cc_values[i] == min(cc_values):
                     url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
