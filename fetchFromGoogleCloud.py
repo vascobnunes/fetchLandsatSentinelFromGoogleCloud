@@ -27,18 +27,16 @@ def downloadMetadataFile(url, outputdir, program, verbose=False):
         try:
             if sys.platform.startswith('win'):  # W32
                 subprocess.call('7z e -so ' + theZippedFile + ' > ' + theFile, shell=True)  # W32
-            elif sys.platform.startswith('linux'):  # UNIX
+            else:  # UNIX (including OSX!)
                 subprocess.call(['gunzip', theZippedFile])
         except:
             print("Some error occurred when trying to unzip the Metadata file!")
     return theFile
 
 
-def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_end, wr2path, wr2row, sensor, best = False, latest = False):
+def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_end, wr2path, wr2row, sensor, latest = False):
     # This function queries the Landsat index catalogue and retrieves urls for the best images found
-    
-    assert not (best and latest), 'Specify either the "best" or "latest" image, not both.'
-    
+        
     print("Searching for Landsat-{0} images in catalog...".format(sensor))
     cc_values = []
     all_urls = []
@@ -62,22 +60,14 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
     else:
         url = []
         for i, u in enumerate(urls):
-            # if best is True, then keep only those elements with the minimum cloud cover
-            # can be greater than 1 (e.g. if multiple scenes have 0% cloud cover)
-            if best: 
-                if cc_values[i] == min(cc_values):
-                    url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
-            else:
-                url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
+            url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
     
     return url
 
 
-def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, tile, best = False, latest = False):
+def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, tile, latest = False):
     # This function queries the sentinel2 index catalogue and retrieves an url for the best image found
-    
-    assert not (best and latest), 'Specify either the "best" or "latest" image, not both.'
-    
+        
     print("Searching for Sentinel-2 images in catalog...")
     cc_values = []
     urls = []
@@ -97,11 +87,7 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
     else:
         url = []
         for i, u in enumerate(urls):
-            if best: 
-                if cc_values[i] == min(cc_values):
-                    url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
-            else:
-                url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
+            url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
         
     return url
 
@@ -172,15 +158,12 @@ def main():
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=tempfile.gettempdir())
-    parser.add_argument("-b", "--best", help="Limit to the best scene(s) (those with the minimum cloud cover)", action="store_true", default=False)
-    parser.add_argument("-t", "--latest", help="Limit to the latest scene", action="store_true", default=False)
+    parser.add_argument("--latest", help="Limit to the latest scene", action="store_true", default=False)
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
     parser.add_argument("-v", "--verbose", help="Show download status", action="store_true", default=False)
     parser.add_argument("-l", "--list", help="List available download url's and exit without downloading", action="store_true", default=False)
     options = parser.parse_args()
     
-    assert not (options.best and options.latest), 'Specify either --best (-b) or --latest (-t), not both.'
-
     if not options.outputcatalogs:
         options.outputcatalogs = options.output
 
@@ -190,7 +173,7 @@ def main():
     # Run functions
     if options.sat == 'S2':
         sentinel2_metadata_file = downloadMetadataFile(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel', options.verbose)
-        url = findS2InCollectionMetadata(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, options.scene, options.best, options.latest)
+        url = findS2InCollectionMetadata(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, options.scene, options.latest)
         if len(url) == 0:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
@@ -204,7 +187,7 @@ def main():
     else:
         landsat_metadata_file = downloadMetadataFile(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat', options.verbose)
         url = findLandsatInCollectionMetadata(landsat_metadata_file, options.cloudcover,
-                                              options.start_date, options.end_date, options.scene[0:3], options.scene[3:6], options.sat, options.best, options.latest)
+                                              options.start_date, options.end_date, options.scene[0:3], options.scene[3:6], options.sat, options.latest)
         if len(url) == 0:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
