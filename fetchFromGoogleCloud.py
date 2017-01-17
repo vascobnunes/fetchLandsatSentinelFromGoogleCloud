@@ -40,6 +40,7 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
     print("Searching for Landsat-{0} images in catalog...".format(sensor))
     cc_values = []
     all_urls = []
+    all_acqdates = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -50,16 +51,17 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
             if int(row['WRS_PATH']) == int(wr2path) and int(row['WRS_ROW']) == int(wr2row) and row['SENSOR_ID'] == sensor and float(row['CLOUD_COVER']) <= cc_limit and date_start < acqdate < date_end:
                 all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
+                all_acqdates.append(acqdate)
 
     # sort url list by increasing acqdate
-    all_urls = [x for (y, x) in sorted(zip(acqdate, url))]
+    all_urls = [x for (y, x) in sorted(zip(all_acqdates, all_urls))]
 
     # if latest is True, take the last element of this sorted list
-    if latest and (len(urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + urls[-1].replace('gs://', '') ]
+    if latest and (len(all_urls) > 0):
+        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
     else:
         url = []
-        for i, u in enumerate(urls):
+        for i, u in enumerate(all_urls):
             url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
     
     return url
@@ -70,7 +72,8 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
         
     print("Searching for Sentinel-2 images in catalog...")
     cc_values = []
-    urls = []
+    all_urls = []
+    all_acqdates = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -79,14 +82,18 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
             day_acq = int(row['SENSING_TIME'][8:10])
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit and date_start < acqdate < date_end:
-                urls.append(row['BASE_URL'])
+                all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
+                all_acqdates.append(acqdate)
     
-    if latest and (len(urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + urls[-1].replace('gs://', '') ]
+    # sort url list by increasing acqdate
+    all_urls = [x for (y, x) in sorted(zip(all_acqdates, all_urls))]
+
+    if latest and (len(all_urls) > 0):
+        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
     else:
         url = []
-        for i, u in enumerate(urls):
+        for i, u in enumerate(all_urls):
             url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
         
     return url
