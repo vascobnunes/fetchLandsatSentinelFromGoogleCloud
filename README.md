@@ -47,6 +47,6 @@ Compatible with python 2.7 and 3.x.
 
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
 
-CONTRIBUTORS:
+Contributors (THANK YOU!):
  - https://github.com/framioco
  - https://github.com/bendv
