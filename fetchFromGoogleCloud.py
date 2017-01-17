@@ -53,12 +53,14 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)
 
-    # sort url list by increasing acqdate
-    all_urls = [x for (y, x) in sorted(zip(all_acqdates, all_urls))]
+    # sort url list by increasing cc_values and acqdate
+    cc_values = sorted(cc_values)
+    all_acqdates = sorted(all_acqdates, reverse=True)		
+    all_urls = [x for (y, z, x) in sorted(zip(cc_values,all_acqdates, all_urls))]
 
     # if latest is True, take the last element of this sorted list
     if latest and (len(all_urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
+        url = [ 'http://storage.googleapis.com/' + all_urls[0].replace('gs://', '') ]
     else:
         url = []
         for i, u in enumerate(all_urls):
@@ -83,14 +85,16 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit and date_start < acqdate < date_end:
                 all_urls.append(row['BASE_URL'])
-                cc_values.append(float(row['CLOUD_COVER']))
+                cc_values.append(float(row['CLOUD_COVER']))			
                 all_acqdates.append(acqdate)
     
-    # sort url list by increasing acqdate
-    all_urls = [x for (y, x) in sorted(zip(all_acqdates, all_urls))]
+    # sort url list by increasing cc_values and acqdate
+    cc_values = sorted(cc_values)
+    all_acqdates = sorted(all_acqdates, reverse=True)	
+    all_urls = [x for (y, z, x) in sorted(zip(cc_values, all_acqdates, all_urls))]
 
     if latest and (len(all_urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
+        url = [ 'http://storage.googleapis.com/' + all_urls[0].replace('gs://', '') ]
     else:
         url = []
         for i, u in enumerate(all_urls):
