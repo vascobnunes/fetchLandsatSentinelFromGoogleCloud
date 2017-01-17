@@ -5,19 +5,19 @@ The script downloads the index.csv file listing all available Landsat or Sentine
 Then searches the file for one scene that matches user parameters.
 Once found, it downloads the image files.
 
-Usage example:
+Usage examples:
 
  - UNIX:
 
-`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 --output ~/LANDSAT --outputcatalogs /tmp`
+`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp`
 
-`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 --output ~/SENTINEL2 --outputcatalogs /tmp`
+`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 -o ~/SENTINEL2 -l --outputcatalogs /tmp`
 
  - WINDOWS:
 
-`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 --output %TEMP%\LANDSAT --outputcatalogs %TEMP%\LANDSAT`
+`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o %TEMP%\LANDSAT --latest --outputcatalogs %TEMP%\LANDSAT`
 
-`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 --output %TEMP%\SENTINEL2 --outputcatalogs %TEMP%\SENTINEL2`
+`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 -o %TEMP%\SENTINEL2 -l --outputcatalogs %TEMP%\SENTINEL2`
 
 Options:
 
@@ -29,11 +29,15 @@ Options:
 
 `         -f END_DATE, --end_date=END_DATE      end date, fmt('2013-12-23')`
 
+`         -o OUTPUT                             Where to download files`
+
 `         -c CLOUDS, --cloudcover=CLOUDS        Set a limit to the cloud cover of the image`
 
 `         -b BIRD, --sat=BIRD                   Which satellite are you looking for. Available options are: TM, ETM, OLI_TIRS, S2`
 
-`         --output=OUTPUT                       Where to download files`
+`         -l LIST                               Just list the urls found, don't download`
+
+`         --latest                              Choose the most recent image(s) that meet(s) the search criteria`
 
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
 
@@ -42,3 +46,7 @@ Run the script with -h switch for more help usage.
 Compatible with python 2.7 and 3.x.
 
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
+
+CONTRIBUTORS:
+ - https://github.com/framioco
+ - https://github.com/bendv
