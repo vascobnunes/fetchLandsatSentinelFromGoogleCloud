@@ -29,15 +29,15 @@ Options:
 
 `         -f END_DATE, --end_date=END_DATE      end date, fmt('2013-12-23')`
 
-`         -o OUTPUT                             Where to download files`
+`         -o OUTPUT,                             Where to download files`
 
 `         -c CLOUDS, --cloudcover=CLOUDS        Set a limit to the cloud cover of the image`
 
 `         -b BIRD, --sat=BIRD                   Which satellite are you looking for. Available options are: TM, ETM, OLI_TIRS, S2`
 
-`         -l LIST                               Just list the urls found, don't download`
+`         -l LIST,                              Just list the urls found, don't download`
 
-`         --latest                              Choose the most recent image(s) that meet(s) the search criteria`
+`         --latest LATEST,                      Choose the most recent image(s) that meet(s) the search criteria`
 
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
 
