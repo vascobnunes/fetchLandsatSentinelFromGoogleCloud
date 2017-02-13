@@ -5,6 +5,8 @@ The script downloads the index.csv file listing all available Landsat or Sentine
 Then searches the file for one scene that matches user parameters.
 Once found, it downloads the image files.
 
+Small demo video: https://youtu.be/8zCs0nxl-rU
+
 Usage examples:
 
  - UNIX:
