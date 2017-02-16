@@ -41,6 +41,8 @@ Options:
 
 `         --latest LATEST,                      Choose the most recent image(s) that meet(s) the search criteria`
 
+`         --overwrite,                          Overwrite files if existing locally`
+
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
 
 Run the script with -h switch for more help usage.
