@@ -103,7 +103,7 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
     return url
 
 
-def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False):
+def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=False):
     # this function downloads the Landsat image files
     img = url.split("/")[len(url.split("/")) - 1]
     possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF',
@@ -111,54 +111,54 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False):
     for bands in possible_bands:
         completeUrl = url + "/" + img + "_" + bands
         destinationDir = os.path.join(outputdir, img)
-        if not os.path.exists(destinationDir):
+        if not os.path.exists(destinationDir) or overwrite:
             os.makedirs(destinationDir)
-        destinationFile = os.path.join(destinationDir, img + "_" + bands)
-        try:
-            if verbose:
-                subprocess.call('curl ' + completeUrl + ' -o ' + destinationFile, shell=True)
-            else:
-                subprocess.call('curl ' + completeUrl + ' -o ' + destinationFile, shell=True, stdout=open(os.devnull, 'wb'))
-        except:
-            os.remove(destinationFile)
-            continue
+            destinationFile = os.path.join(destinationDir, img + "_" + bands)
+            try:
+                if verbose:
+                    subprocess.call('curl ' + completeUrl + ' -o ' + destinationFile, shell=True)
+                else:
+                    subprocess.call('curl ' + completeUrl + ' -o ' + destinationFile, shell=True, stdout=open(os.devnull, 'wb'))
+            except:
+                os.remove(destinationFile)
+                continue
 
 
-def downloadS2FromGoogleCloud(url, outputdir, verbose=False):
+def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False):
     # this function collects the entire dir structure of the image files from
     # the manifest.safe file and builds the same structure in the output
     # location
     img = url.split("/")[len(url.split("/")) - 1]
     manifest = url + "/manifest.safe"
     destinationDir = os.path.join(outputdir, img)
-    if not os.path.exists(destinationDir):
-        os.makedirs(destinationDir)
     destinationManifestFile = os.path.join(destinationDir, "manifest.safe")
-    subprocess.call('curl ' + manifest + ' -o ' + destinationManifestFile, shell=True)
-    readManifestFile = open(destinationManifestFile)
-    tempList = readManifestFile.read().split()
-    for l in tempList:
-        if l.find("href") >= 0:
-            completeUrl = l[7:l.find("><") - 2]
-            # building dir structure
-            dirs = completeUrl.split("/")
-            for d in range(0, len(dirs) - 1):
-                if dirs[d] != '':
-                    destinationDir = os.path.join(destinationDir, dirs[d])
-                    try:
-                        os.makedirs(destinationDir)
-                    except:
-                        continue
-            destinationDir = os.path.join(outputdir, img)
-            # downloading files
-            destinationFile = destinationDir + completeUrl
-            try:
-                if verbose:
-                    subprocess.call('curl ' + url + completeUrl + ' -o ' + destinationFile, shell=True) # shell should be False? see http://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess
-                else:
-                    subprocess.call('curl ' + url + completeUrl + ' -o ' + destinationFile, shell=True, stdout=open(os.devnull, 'wb'))
-            except:
-                continue
+    if not os.path.exists(destinationDir) or overwrite:
+        os.makedirs(destinationDir)
+        subprocess.call('curl ' + manifest + ' -o ' + destinationManifestFile, shell=True)
+        readManifestFile = open(destinationManifestFile)
+        tempList = readManifestFile.read().split()
+        for l in tempList:
+            if l.find("href") >= 0:
+                completeUrl = l[7:l.find("><") - 2]
+                # building dir structure
+                dirs = completeUrl.split("/")
+                for d in range(0, len(dirs) - 1):
+                    if dirs[d] != '':
+                        destinationDir = os.path.join(destinationDir, dirs[d])
+                        try:
+                            os.makedirs(destinationDir)
+                        except:
+                            continue
+                destinationDir = os.path.join(outputdir, img)
+                # downloading files
+                destinationFile = destinationDir + completeUrl
+                try:
+                    if verbose:
+                        subprocess.call('curl ' + url + completeUrl + ' -o ' + destinationFile, shell=True) # shell should be False? see http://stackoverflow.com/questions/3172470/actual-meaning-of-shell-true-in-subprocess
+                    else:
+                        subprocess.call('curl ' + url + completeUrl + ' -o ' + destinationFile, shell=True, stdout=open(os.devnull, 'wb'))
+                except:
+                    continue
 
 
 def main():
@@ -169,8 +169,10 @@ def main():
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=tempfile.gettempdir())
+    parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", action="store_true", default=False)
     parser.add_argument("--latest", help="Limit to the latest scene", action="store_true", default=False)
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
+    parser.add_argument("--overwrite", help="Overwrite files if existing locally", default=False)
     parser.add_argument("-v", "--verbose", help="Show download status", action="store_true", default=False)
     parser.add_argument("-l", "--list", help="List available download url's and exit without downloading", action="store_true", default=False)
     options = parser.parse_args()
@@ -192,7 +194,7 @@ def main():
             for i, u in enumerate(url):
                 if not options.list:
                     print("\nDownloading {0} of {1}...".format(i+1, len(url)))
-                    downloadS2FromGoogleCloud(u, options.output, options.verbose)
+                    downloadS2FromGoogleCloud(u, options.output, options.verbose, options.overwrite)
                 else:
                     print(url[i])
     else:
@@ -206,7 +208,7 @@ def main():
             for i, u in enumerate(url):
                 if not options.list:
                     print("\nDownloading {0} of {1}...".format(i+1, len(url)))
-                    downloadLandsatFromGoogleCloud(u, options.output, options.verbose)
+                    downloadLandsatFromGoogleCloud(u, options.output, options.verbose, options.overwrite)
                 else:
                     print(url[i])
 
