@@ -39,6 +39,8 @@ Options:
 
 `         -l LIST,                              Just list the urls found, don't download`
 
+`         -e EXCLUDEPARTIAL,                    Exclude partial tiles - only for Sentinel-2`
+
 `         --latest LATEST,                      Choose the most recent image(s) that meet(s) the search criteria`
 
 `         --overwrite,                          Overwrite files if existing locally`
