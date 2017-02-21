@@ -16,7 +16,6 @@ except ImportError:
                apt install python-gdal""")
 
 
-
 def downloadMetadataFile(url, outputdir, program, verbose=False):
     # This function downloads and unzips the catalogue files
     theZippedFile = os.path.join(outputdir, 'index_' + program + '.csv.gz')
@@ -116,17 +115,29 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=Fals
     img = url.split("/")[len(url.split("/")) - 1]
     possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF',
                       'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
-    for bands in possible_bands:
-        completeUrl = url + "/" + img + "_" + bands
-        destinationDir = os.path.join(outputdir, img)
-        if not os.path.exists(destinationDir) or overwrite:
-            os.makedirs(destinationDir)
-            destinationFile = os.path.join(destinationDir, img + "_" + bands)
-            try:
-                urllib.urlretrieve(completeUrl, filename=destinationFile)
-            except:
-                os.remove(destinationFile)
-                continue
+    p = 0
+    if len(possible_bands) > 0:
+        p += 1
+        percent = int(p * 100 / len(possible_bands))
+        if percent > 100: percent = 100
+        print "%2d%%" % percent,
+        if percent < 100:
+            print "\b\b\b\b\b",  # Erase "NN% "
+        else:
+            print "Done."
+        for bands in possible_bands:
+            completeUrl = url + "/" + img + "_" + bands
+            destinationDir = os.path.join(outputdir, img)
+            if not os.path.exists(destinationDir) or overwrite:
+                os.makedirs(destinationDir)
+                destinationFile = os.path.join(destinationDir, img + "_" + bands)
+                try:
+                    urllib.urlretrieve(completeUrl, filename=destinationFile)
+                except:
+                    os.remove(destinationFile)
+                    continue
+    if not len(possible_bands):
+        print
 
 
 def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, partial=False):
@@ -140,27 +151,39 @@ def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, pa
     if not os.path.exists(destinationDir) or overwrite:
         os.makedirs(destinationDir)
         urllib.urlretrieve(manifest, filename=destinationManifestFile)
-        readManifestFile = open(destinationManifestFile)
-        tempList = readManifestFile.read().split()
-        for l in tempList:
-            if l.find("href") >= 0:
-                completeUrl = l[7:l.find("><") - 2]
-                # building dir structure
-                dirs = completeUrl.split("/")
-                for d in range(0, len(dirs) - 1):
-                    if dirs[d] != '':
-                        destinationDir = os.path.join(destinationDir, dirs[d])
-                        try:
-                            os.makedirs(destinationDir)
-                        except:
-                            continue
-                destinationDir = os.path.join(outputdir, img)
-                # downloading files
-                destinationFile = destinationDir + completeUrl
-                try:
-                    urllib.urlretrieve(completeUrl, filename=destinationFile)
-                except:
-                    continue
+        with open(destinationManifestFile, 'r') as readManifestFile:
+            tempList = readManifestFile.read().split()
+        p = 0
+        if len(tempList) > 0:
+            for l in tempList:
+                p += 1
+                percent = int(p * 100 / len(tempList))
+                if percent > 100: percent = 100
+                print "%2d%%" % percent,
+                if percent < 100:
+                    print "\b\b\b\b\b",  # Erase "NN% "
+                else:
+                    print "Done."
+                if l.find("href") >= 0:
+                    completeUrl = l[7:l.find("><") - 2]
+                    # building dir structure
+                    dirs = completeUrl.split("/")
+                    for d in range(0, len(dirs) - 1):
+                        if dirs[d] != '':
+                            destinationDir = os.path.join(destinationDir, dirs[d])
+                            try:
+                                os.makedirs(destinationDir)
+                            except:
+                                continue
+                    destinationDir = os.path.join(outputdir, img)
+                    # downloading files
+                    destinationFile = destinationDir + completeUrl
+                    try:
+                        urllib.urlretrieve(url + completeUrl, filename=destinationFile)
+                    except:
+                        continue
+        if not len(tempList):
+            print
     if partial:
         tile_chk = check_full_tile(get_S2_image_bands(destinationDir, "B01"))
         if tile_chk == 'Partial':
