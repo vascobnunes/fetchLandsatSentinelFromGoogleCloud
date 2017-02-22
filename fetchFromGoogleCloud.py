@@ -244,7 +244,7 @@ def main():
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=tempfile.gettempdir())
-    parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=True)
+    parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
     parser.add_argument("--latest", help="Limit to the latest scene", action="store_true", default=False)
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
     parser.add_argument("--overwrite", help="Overwrite files if existing locally", default=False)
