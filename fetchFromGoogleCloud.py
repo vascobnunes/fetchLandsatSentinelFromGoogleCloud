@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import glob
 import urllib
+import gzip
 try:
     from osgeo import gdal
 except ImportError:
@@ -33,7 +34,12 @@ def downloadMetadataFile(url, outputdir, program, verbose=False):
         # unzip the file
         try:
             if sys.platform.startswith('win'):  # W32
-                subprocess.call('7z e -so ' + theZippedFile + ' > ' + theFile, shell=True)  # W32
+                with gzip.open(theZippedFile, 'rb') as z:
+                    file_content = z.read()
+                    target = open(theFile, 'w')
+                    target.write(file_content)
+                    z.close
+                    target.close
             else:  # UNIX (including OSX!)
                 subprocess.call(['gunzip', theZippedFile])
         except:
