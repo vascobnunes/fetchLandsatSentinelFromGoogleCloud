@@ -188,6 +188,12 @@ def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, pa
                         urllib.urlretrieve(url + completeUrl, filename=destinationFile)
                     except:
                         continue
+        granule = os.path.dirname(os.path.dirname(get_S2_image_bands(destinationDir, "B01")))
+        for f in ["AUX_DATA", "HTML"]:
+            if not os.path.exists(os.path.join(granule, f)):
+                os.makedirs(os.path.join(granule, f))
+            if not os.path.exists(os.path.join(destinationDir, f)):
+                os.makedirs(os.path.join(destinationDir, f))
         if not len(tempList):
             print
     if partial:
