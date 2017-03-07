@@ -7,6 +7,10 @@ Once found, it downloads the image files.
 
 Small demo video: https://youtu.be/8zCs0nxl-rU
 
+Install:
+
+`       pip install fels`
+
 Usage examples:
 
  - UNIX:
