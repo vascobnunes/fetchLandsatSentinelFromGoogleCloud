@@ -130,7 +130,7 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=Fals
         if percent < 100:
             print("\b\b\b\b\b",)  # Erase "NN% "
         else:
-            print "Done."
+            print("Done.")
         for bands in possible_bands:
             completeUrl = url + "/" + img + "_" + bands
             destinationDir = os.path.join(outputdir, img)
