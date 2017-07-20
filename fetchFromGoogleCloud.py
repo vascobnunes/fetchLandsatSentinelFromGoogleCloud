@@ -126,9 +126,9 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=Fals
         p += 1
         percent = int(p * 100 / len(possible_bands))
         if percent > 100: percent = 100
-        print "%2d%%" % percent,
+        print("%2d%%" % percent,)
         if percent < 100:
-            print "\b\b\b\b\b",  # Erase "NN% "
+            print("\b\b\b\b\b",)  # Erase "NN% "
         else:
             print "Done."
         for bands in possible_bands:
@@ -143,7 +143,7 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=Fals
                     os.remove(destinationFile)
                     continue
     if not len(possible_bands):
-        print
+        print()
 
 
 def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, partial=False):
@@ -165,11 +165,11 @@ def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, pa
                 p += 1
                 percent = int(p * 100 / len(tempList))
                 if percent > 100: percent = 100
-                print "%2d%%" % percent,
+                print("%2d%%" % percent,)
                 if percent < 100:
-                    print "\b\b\b\b\b",  # Erase "NN% "
+                    print("\b\b\b\b\b",)  # Erase "NN% "
                 else:
-                    print "Done."
+                    print("Done.")
                 if l.find("href") >= 0:
                     completeUrl = l[7:l.find("><") - 2]
                     # building dir structure
@@ -195,7 +195,7 @@ def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, pa
             if not os.path.exists(os.path.join(destinationDir, f)):
                 os.makedirs(os.path.join(destinationDir, f))
         if not len(tempList):
-            print
+            print()
     if partial:
         tile_chk = check_full_tile(get_S2_image_bands(destinationDir, "B01"))
         if tile_chk == 'Partial':
