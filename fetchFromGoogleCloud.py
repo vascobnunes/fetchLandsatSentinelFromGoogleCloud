@@ -73,7 +73,7 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
 
     # if latest is True, take the last element of this sorted list
     if latest and (len(all_urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + all_urls[0].replace('gs://', '') ]
+        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
     else:
         url = []
         for i, u in enumerate(all_urls):
@@ -107,7 +107,7 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
     all_urls = [x for (y, z, x) in sorted(zip(cc_values, all_acqdates, all_urls))]
 
     if latest and (len(all_urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + all_urls[0].replace('gs://', '') ]
+        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
     else:
         url = []
         for i, u in enumerate(all_urls):
