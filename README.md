@@ -7,13 +7,19 @@ Once found, it downloads the image files.
 
 Small demo video: https://youtu.be/8zCs0nxl-rU
 
-Install:
+You may either install the package through pip:
 
 `       pip install fels`
 
+or if using a conda environment, the following steps are recommended to create and install dependencies:
+`       conda create --name fetchLSGC python=3.6 numpy`
+Switch to the new environment (`source activate fetchLSGC` in Linux), and install the gdal dependency from conda-forge
+`       conda config --add channels conda-forge`
+`       conda install gdal`
+
 Usage examples:
 
- - UNIX:
+ - LINUX:
 
 `       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp`
 

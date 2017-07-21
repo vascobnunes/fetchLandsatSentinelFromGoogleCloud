@@ -7,7 +7,10 @@ import sys
 import tempfile
 import shutil
 import glob
-import urllib
+if sys.version_info[0] < 3:
+    import urllib
+else:
+    import urllib.request
 import gzip
 try:
     from osgeo import gdal
@@ -26,7 +29,10 @@ def downloadMetadataFile(url, outputdir, program, verbose=False):
         # download the file
         try:
             if not os.path.exists(theZippedFile):
-                urllib.urlretrieve(url, filename=theZippedFile)
+                if sys.version_info[0] < 3:
+                    urllib.urlretrieve(url, filename=theZippedFile)
+                else:
+                    urllib.request.urlretrieve(url, filename=theZippedFile)
         except:
             print("Some error occurred when trying to download the Metadata file!")
     if not os.path.isfile(theFile):
@@ -138,7 +144,10 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=Fals
                 os.makedirs(destinationDir)
                 destinationFile = os.path.join(destinationDir, img + "_" + bands)
                 try:
-                    urllib.urlretrieve(completeUrl, filename=destinationFile)
+                    if sys.version_info[0] < 3:
+                        urllib.urlretrieve(completeUrl, filename=destinationFile)
+                    else:
+                        urllib.request.urlretrieve(completeUrl, filename=destinationFile)
                 except:
                     os.remove(destinationFile)
                     continue
@@ -156,7 +165,10 @@ def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, pa
     destinationManifestFile = os.path.join(destinationDir, "manifest.safe")
     if not os.path.exists(destinationDir) or overwrite:
         os.makedirs(destinationDir)
-        urllib.urlretrieve(manifest, filename=destinationManifestFile)
+        if sys.version_info[0] < 3:
+            urllib.urlretrieve(manifest, filename=destinationManifestFile)
+        else:
+            urllib.request.urlretrieve(manifest, filename=destinationManifestFile)
         with open(destinationManifestFile, 'r') as readManifestFile:
             tempList = readManifestFile.read().split()
         p = 0
@@ -185,7 +197,10 @@ def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, pa
                     # downloading files
                     destinationFile = destinationDir + completeUrl
                     try:
-                        urllib.urlretrieve(url + completeUrl, filename=destinationFile)
+                        if sys.version_info[0] < 3:
+                            urllib.urlretrieve(url + completeUrl, filename=destinationFile)
+                        else:
+                            urllib.request.urlretrieve(url + completeUrl, filename=destinationFile)
                     except:
                         continue
         granule = os.path.dirname(os.path.dirname(get_S2_image_bands(destinationDir, "B01")))
