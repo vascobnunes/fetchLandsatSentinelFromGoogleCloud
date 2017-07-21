@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import csv
 import datetime
@@ -129,10 +130,8 @@ def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=Fals
         p += 1
         percent = int(p * 100 / len(possible_bands))
         if percent > 100: percent = 100
-        print("%2d%%" % percent,)
-        if percent < 100:
-            print("\b\b\b\b\b",)  # Erase "NN% "
-        else:
+        print("%2d%%" % percent, end='\r')
+        if percent >= 100:
             print("Done.")
         for bands in possible_bands:
             completeUrl = url + "/" + img + "_" + bands
