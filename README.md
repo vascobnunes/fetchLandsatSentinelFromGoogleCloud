@@ -1,7 +1,7 @@
 # FeLS - Fetch Landsat & Sentinel Data from google cloud
 Find and download Landsat and Sentinel-2 data from the public Google Cloud
 
-The script downloads the index.csv file listing all available Landsat or Sentinel-2 tiles. 
+The script downloads the index.csv file listing all available Landsat or Sentinel-2 tiles.
 Then searches the file for one scene that matches user parameters.
 Once found, it downloads the image files.
 
@@ -12,7 +12,7 @@ You may either install the package through pip:
 `       pip install fels`
 
 or if using a conda environment, the following steps are recommended to create and install dependencies:
-`       conda create --name fetchLSGC python=3.6 numpy`
+`       conda create --name fetchLSGC python=3.6`
 Switch to the new environment (`source activate fetchLSGC` in Linux), and install the gdal dependency from conda-forge
 `       conda config --add channels conda-forge`
 `       conda install gdal`
@@ -58,8 +58,6 @@ Options:
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`
 
 Run the script with -h switch for more help usage.
-
-WORK IN PROGRESS: Compatible with python 2.7 and 3.x.
 
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
 

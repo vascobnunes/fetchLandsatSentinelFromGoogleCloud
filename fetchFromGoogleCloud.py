@@ -1,4 +1,4 @@
-from __future__ import print_function
+"""TODO module documentation"""
 import argparse
 import csv
 import datetime
@@ -8,54 +8,36 @@ import sys
 import tempfile
 import shutil
 import glob
-if sys.version_info[0] < 3:
-    import urllib
-else:
-    import urllib.request as urllib
 import gzip
+import urllib.request
 try:
     from osgeo import gdal
 except ImportError:
-    raise ModuleNotFoundError(""" ERROR: Could not find the GDAL/OGR Python library bindings.
-               On Debian based systems you can install it with this command:
-               apt install python-gdal
-               """)
+    raise ModuleNotFoundError("""Could not find the GDAL/OGR Python library bindings. Using conda \
+(recommended) use: conda config --add channels conda-forge && conda install gdal""")
 
 
-def downloadMetadataFile(url, outputdir, program, verbose=False):
-    # This function downloads and unzips the catalogue files
-    theZippedFile = os.path.join(outputdir, 'index_' + program + '.csv.gz')
-    theFile = os.path.join(outputdir, 'index_' + program + '.csv')
-    if not os.path.isfile(theZippedFile):
+def download_metadata_file(url, outputdir, program):
+    """Download and unzip the catalogue files."""
+    zipped_index_path = os.path.join(outputdir, 'index_' + program + '.csv.gz')
+    if not os.path.isfile(zipped_index_path):
+        os.makedirs(os.path.dirname(zipped_index_path), exist_ok=True)
         print("Downloading Metadata file...")
-        # download the file
-        try:
-            if not os.path.exists(theZippedFile):
-                urllib.urlretrieve(url, filename=theZippedFile)
-        except:
-            print("Some error occurred when trying to download the Metadata file!")
-    if not os.path.isfile(theFile):
+        with urllib.request.urlopen(url) as data, open(zipped_index_path, 'wb') as target:
+            shutil.copyfileobj(data, target)
+    index_path = os.path.join(outputdir, 'index_' + program + '.csv')
+    if not os.path.isfile(index_path):
         print("Unzipping Metadata file...")
-        # unzip the file
-        try:
-            if sys.platform.startswith('win'):  # W32
-                with gzip.open(theZippedFile, 'rb') as z:
-                    file_content = z.read()
-                    target = open(theFile, 'w')
-                    target.write(file_content)
-                    z.close
-                    target.close
-            else:  # UNIX (including OSX!)
-                subprocess.call(['gunzip', theZippedFile])
-        except:
-            print("Some error occurred when trying to unzip the Metadata file!")
-    return theFile
+        with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as target:
+            shutil.copyfileobj(gzip_index, target)
+    return index_path
 
 
-def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_end, wr2path, wr2row, sensor, latest = False):
-    # This function queries the Landsat index catalogue and retrieves urls for the best images found
-        
-    print("Searching for Landsat-{0} images in catalog...".format(sensor))
+def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
+                            sensor, latest=False):
+    """Query the Landsat index catalogue and retrieve urls for the best images found."""
+
+    print(f"Searching for Landsat-{sensor} images in catalog...")
     cc_values = []
     all_urls = []
     all_acqdates = []
@@ -66,30 +48,31 @@ def findLandsatInCollectionMetadata(collection_file, cc_limit, date_start, date_
             month_acq = int(row['DATE_ACQUIRED'][5:7])
             day_acq = int(row['DATE_ACQUIRED'][8:10])
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
-            if int(row['WRS_PATH']) == int(wr2path) and int(row['WRS_ROW']) == int(wr2row) and row['SENSOR_ID'] == sensor and float(row['CLOUD_COVER']) <= cc_limit and date_start < acqdate < date_end:
+            if int(row['WRS_PATH']) == int(wr2path) and int(row['WRS_ROW']) == int(wr2row) \
+                    and row['SENSOR_ID'] == sensor and float(row['CLOUD_COVER']) <= cc_limit \
+                    and date_start < acqdate < date_end:
                 all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)
 
     # sort url list by increasing cc_values and acqdate
     cc_values = sorted(cc_values)
-    all_acqdates = sorted(all_acqdates, reverse=True)		
+    all_acqdates = sorted(all_acqdates, reverse=True)
     all_urls = [x for (y, z, x) in sorted(zip(cc_values,all_acqdates, all_urls))]
 
     # if latest is True, take the last element of this sorted list
-    if latest and (len(all_urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
+    if latest and all_urls:
+        return ['http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '')]
     else:
-        url = []
-        for i, u in enumerate(all_urls):
-            url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
-    
-    return url
+        urls = []
+        for url in all_urls:
+            urls.append('http://storage.googleapis.com/' + url.replace('gs://', ''))
+        return urls
 
 
-def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, tile, latest = False):
-    # This function queries the sentinel2 index catalogue and retrieves an url for the best image found
-        
+def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False):
+    """Query the Sentinel-2 index catalogue and retrieve urls for the best images found."""
+
     print("Searching for Sentinel-2 images in catalog...")
     cc_values = []
     all_urls = []
@@ -101,109 +84,78 @@ def findS2InCollectionMetadata(collection_file, cc_limit, date_start, date_end, 
             month_acq = int(row['SENSING_TIME'][5:7])
             day_acq = int(row['SENSING_TIME'][8:10])
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
-            if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit and date_start < acqdate < date_end:
+            if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit \
+                    and date_start < acqdate < date_end:
                 all_urls.append(row['BASE_URL'])
-                cc_values.append(float(row['CLOUD_COVER']))			
+                cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)
-    
+
     # sort url list by increasing cc_values and acqdate
     cc_values = sorted(cc_values)
-    all_acqdates = sorted(all_acqdates, reverse=True)	
+    all_acqdates = sorted(all_acqdates, reverse=True)
     all_urls = [x for (y, z, x) in sorted(zip(cc_values, all_acqdates, all_urls))]
 
-    if latest and (len(all_urls) > 0):
-        url = [ 'http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '') ]
+    if latest and all_urls:
+        return ['http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '')]
     else:
-        url = []
-        for i, u in enumerate(all_urls):
-            url.append('http://storage.googleapis.com/' + u.replace('gs://', ''))
-        
-    return url
+        urls = []
+        for url in all_urls:
+            urls.append('http://storage.googleapis.com/' + url.replace('gs://', ''))
+        return urls
 
 
-def downloadLandsatFromGoogleCloud(url, outputdir, verbose=False, overwrite=False):
-    # this function downloads the Landsat image files
-    img = url.split("/")[len(url.split("/")) - 1]
-    possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF',
-                      'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
-    p = 0
-    if len(possible_bands) > 0:
-        p += 1
-        percent = int(p * 100 / len(possible_bands))
-        if percent > 100: percent = 100
-        print("%2d%%" % percent, end='\r')
-        if percent >= 100:
-            print("Done.")
-        for bands in possible_bands:
-            completeUrl = url + "/" + img + "_" + bands
-            destinationDir = os.path.join(outputdir, img)
-            if not os.path.exists(destinationDir) or overwrite:
-                os.makedirs(destinationDir)
-                destinationFile = os.path.join(destinationDir, img + "_" + bands)
+def get_landsat_image(url, outputdir, overwrite=False):
+    """Download a Landsat image file."""
+    img = os.path.basename(url)
+    possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF', 'B6_VCID_1.TIF',
+                      'B6_VCID_2.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+    for band in possible_bands:
+        complete_url = url + "/" + img + "_" + band
+        target_path = os.path.join(outputdir, img)
+        if not os.path.isdir(target_path) or overwrite:
+            os.makedirs(target_path)
+            target_file = os.path.join(target_path, img + "_" + band)
+            with urllib.request.urlopen(complete_url) as data, open(target_file, 'wb') as target:
+                shutil.copyfileobj(data, target)
+
+
+def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
+    """
+    Collect the entire dir structure of the image files from the
+    manifest.safe file and build the same structure in the output
+    location."""
+    img = os.path.basename(url)
+    target_path = os.path.join(outputdir, img)
+    target_manifest = os.path.join(target_path, "manifest.safe")
+    if not os.path.exists(target_path) or overwrite:
+        os.makedirs(target_path)
+        manifest_url = url + "/manifest.safe"
+        with urllib.request.urlopen(manifest_url) as data, open(target_manifest, 'wb') as target:
+            shutil.copyfileobj(data, target)
+        with open(target_manifest, 'r') as manifest_file:
+            manifest_lines = manifest_file.read().split()
+        for line in manifest_lines:
+            if 'href' in line:
+                rel_path = line[7:line.find("><") - 2]
+                abs_path = os.path.join(target_path, *rel_path.split('/')[1:])
+                os.makedirs(os.path.dirname(abs_path), exist_ok=True)
                 try:
-                    urllib.urlretrieve(completeUrl, filename=destinationFile)
-                except:
-                    os.remove(destinationFile)
+                    with urllib.request.urlopen(url + rel_path) as data, open(abs_path, 'wb') as target:
+                        shutil.copyfileobj(data, target)
+                except urllib.error.HTTPError as error:
+                    print(f"Error downloading {url + rel_path} [{error}]")
                     continue
-    if not len(possible_bands):
-        print()
-
-
-def downloadS2FromGoogleCloud(url, outputdir, verbose=False, overwrite=False, partial=False):
-    # this function collects the entire dir structure of the image files from
-    # the manifest.safe file and builds the same structure in the output
-    # location
-    img = url.split("/")[len(url.split("/")) - 1]
-    manifest = url + "/manifest.safe"
-    destinationDir = os.path.join(outputdir, img)
-    destinationManifestFile = os.path.join(destinationDir, "manifest.safe")
-    if not os.path.exists(destinationDir) or overwrite:
-        os.makedirs(destinationDir)
-        urllib.urlretrieve(manifest, filename=destinationManifestFile)
-        with open(destinationManifestFile, 'r') as readManifestFile:
-            tempList = readManifestFile.read().split()
-        p = 0
-        if len(tempList) > 0:
-            for l in tempList:
-                p += 1
-                percent = int(p * 100 / len(tempList))
-                if percent > 100: percent = 100
-                print("%2d%%" % percent,)
-                if percent < 100:
-                    print("\b\b\b\b\b",)  # Erase "NN% "
-                else:
-                    print("Done.")
-                if l.find("href") >= 0:
-                    completeUrl = l[7:l.find("><") - 2]
-                    # building dir structure
-                    dirs = completeUrl.split("/")
-                    for d in range(0, len(dirs) - 1):
-                        if dirs[d] != '':
-                            destinationDir = os.path.join(destinationDir, dirs[d])
-                            try:
-                                os.makedirs(destinationDir)
-                            except:
-                                continue
-                    destinationDir = os.path.join(outputdir, img)
-                    # downloading files
-                    destinationFile = destinationDir + completeUrl
-                    try:
-                        urllib.urlretrieve(url + completeUrl, filename=destinationFile)
-                    except:
-                        continue
-        granule = os.path.dirname(os.path.dirname(get_S2_image_bands(destinationDir, "B01")))
-        for f in ["AUX_DATA", "HTML"]:
-            if not os.path.exists(os.path.join(granule, f)):
-                os.makedirs(os.path.join(granule, f))
-            if not os.path.exists(os.path.join(destinationDir, f)):
-                os.makedirs(os.path.join(destinationDir, f))
-        if not len(tempList):
+        granule = os.path.dirname(os.path.dirname(get_S2_image_bands(target_path, "B01")))
+        for extra_dir in ("AUX_DATA", "HTML"):
+            os.makedirs(os.path.join(target_path, extra_dir))
+            os.makedirs(os.path.join(granule, extra_dir))
+        if not manifest_lines:
             print()
     if partial:
-        tile_chk = check_full_tile(get_S2_image_bands(destinationDir, "B01"))
+        tile_chk = check_full_tile(get_S2_image_bands(target_path, "B01"))
         if tile_chk == 'Partial':
-            print("\nRemoving partial tile image files...".format(img))
-            shutil.rmtree(destinationDir)
+            print("Removing partial tile image files...")
+            shutil.rmtree(target_path)
 
 
 def get_S2_image_bands(image_path, band):
@@ -246,7 +198,7 @@ def check_full_tile(image):
                 except:
                     count[cell_value] = 1
                 break
-    for key in sorted(count.iterkeys()):
+    for key in sorted(count.keys()):
         if count[key] is not None:
             return "Partial"
 
@@ -263,10 +215,9 @@ def main():
     parser.add_argument("--latest", help="Limit to the latest scene", action="store_true", default=False)
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
     parser.add_argument("--overwrite", help="Overwrite files if existing locally", default=False)
-    parser.add_argument("-v", "--verbose", help="Show download status", action="store_true", default=False)
     parser.add_argument("-l", "--list", help="List available download url's and exit without downloading", action="store_true", default=False)
     options = parser.parse_args()
-    
+
     if not options.outputcatalogs:
         options.outputcatalogs = options.output
 
@@ -275,30 +226,30 @@ def main():
 
     # Run functions
     if options.sat == 'S2':
-        sentinel2_metadata_file = downloadMetadataFile(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel', options.verbose)
-        url = findS2InCollectionMetadata(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, options.scene, options.latest)
-        if len(url) == 0:
+        sentinel2_metadata_file = download_metadata_file(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel')
+        url = query_sentinel2_catalogue(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, options.scene, options.latest)
+        if not url:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
-            print("Found {0} files.".format(len(url)))
+            print(f"Found {len(url)} files.")
             for i, u in enumerate(url):
                 if not options.list:
-                    print("\nDownloading {0} of {1}...".format(i+1, len(url)))
-                    downloadS2FromGoogleCloud(u, options.output, options.verbose, options.overwrite, options.excludepartial)
+                    print(f"Downloading {i+1} of {len(url)}...")
+                    get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial)
                 else:
                     print(url[i])
     else:
-        landsat_metadata_file = downloadMetadataFile(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat', options.verbose)
-        url = findLandsatInCollectionMetadata(landsat_metadata_file, options.cloudcover,
+        landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
+        url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover,
                                               options.start_date, options.end_date, options.scene[0:3], options.scene[3:6], options.sat, options.latest)
-        if len(url) == 0:
+        if not url:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
-            print("Found {0} files.".format(len(url)))
+            print(f"Found {len(url)} files.")
             for i, u in enumerate(url):
                 if not options.list:
-                    print("\nDownloading {0} of {1}...".format(i+1, len(url)))
-                    downloadLandsatFromGoogleCloud(u, options.output, options.verbose, options.overwrite)
+                    print(f"Downloading {i+1} of {len(url)}...")
+                    get_landsat_image(u, options.output, options.overwrite)
                 else:
                     print(url[i])
 
