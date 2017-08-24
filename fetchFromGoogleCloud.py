@@ -13,7 +13,7 @@ import urllib.request
 try:
     from osgeo import gdal
 except ImportError:
-    raise ModuleNotFoundError("""Could not find the GDAL/OGR Python library bindings. Using conda \
+    raise ImportError("""Could not find the GDAL/OGR Python library bindings. Using conda \
 (recommended) use: conda config --add channels conda-forge && conda install gdal""")
 
 
@@ -37,7 +37,7 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
                             sensor, latest=False):
     """Query the Landsat index catalogue and retrieve urls for the best images found."""
 
-    print(f"Searching for Landsat-{sensor} images in catalog...")
+    print("Searching for Landsat-{} images in catalog...".format(sensor))
     cc_values = []
     all_urls = []
     all_acqdates = []
@@ -143,7 +143,7 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
                     with urllib.request.urlopen(url + rel_path) as data, open(abs_path, 'wb') as target:
                         shutil.copyfileobj(data, target)
                 except urllib.error.HTTPError as error:
-                    print(f"Error downloading {url + rel_path} [{error}]")
+                    print("Error downloading {} [{}]".format(url + rel_path, error))
                     continue
         granule = os.path.dirname(os.path.dirname(get_S2_image_bands(target_path, "B01")))
         for extra_dir in ("AUX_DATA", "HTML"):
@@ -231,10 +231,10 @@ def main():
         if not url:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
-            print(f"Found {len(url)} files.")
+            print("Found {} files.".format(len(url)))
             for i, u in enumerate(url):
                 if not options.list:
-                    print(f"Downloading {i+1} of {len(url)}...")
+                    print("Downloading {} of {}...".format(i+1, len(url)))
                     get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial)
                 else:
                     print(url[i])
@@ -245,10 +245,10 @@ def main():
         if not url:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
-            print(f"Found {len(url)} files.")
+            print("Found {} files.".format(len(url)))
             for i, u in enumerate(url):
                 if not options.list:
-                    print(f"Downloading {i+1} of {len(url)}...")
+                    print("Downloading {} of {}...".format(i+1, len(url)))
                     get_landsat_image(u, options.output, options.overwrite)
                 else:
                     print(url[i])
