@@ -1,9 +1,9 @@
 """TODO module documentation"""
+from __future__ import absolute_import, division, print_function
 import argparse
 import csv
 import datetime
 import os
-import subprocess
 import sys
 import tempfile
 import shutil
@@ -23,20 +23,30 @@ def download_metadata_file(url, outputdir, program):
     if not os.path.isfile(zipped_index_path):
         os.makedirs(os.path.dirname(zipped_index_path), exist_ok=True)
         print("Downloading Metadata file...")
-        with urllib.request.urlopen(url) as data, open(zipped_index_path, 'wb') as target:
-            shutil.copyfileobj(data, target)
+        with urllib.request.urlopen(url) as req, open(zipped_index_path, 'wb') as f:
+            shutil.copyfileobj(req, f)
     index_path = os.path.join(outputdir, 'index_' + program + '.csv')
     if not os.path.isfile(index_path):
         print("Unzipping Metadata file...")
-        with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as target:
-            shutil.copyfileobj(gzip_index, target)
+        with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as f:
+            shutil.copyfileobj(gzip_index, f)
     return index_path
+
+
+def sort_url_list(cc_values, all_acqdates, all_urls):
+    """Sort the url list by increasing cc_values and acqdate."""
+    cc_values = sorted(cc_values)
+    all_acqdates = sorted(all_acqdates, reverse=True)
+    all_urls = [x for (y, z, x) in sorted(zip(cc_values, all_acqdates, all_urls))]
+    urls = []
+    for url in all_urls:
+        urls.append('http://storage.googleapis.com/' + url.replace('gs://', ''))
+    return urls
 
 
 def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
                             sensor, latest=False):
     """Query the Landsat index catalogue and retrieve urls for the best images found."""
-
     print("Searching for Landsat-{} images in catalog...".format(sensor))
     cc_values = []
     all_urls = []
@@ -55,24 +65,13 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)
 
-    # sort url list by increasing cc_values and acqdate
-    cc_values = sorted(cc_values)
-    all_acqdates = sorted(all_acqdates, reverse=True)
-    all_urls = [x for (y, z, x) in sorted(zip(cc_values,all_acqdates, all_urls))]
-
-    # if latest is True, take the last element of this sorted list
     if latest and all_urls:
-        return ['http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '')]
-    else:
-        urls = []
-        for url in all_urls:
-            urls.append('http://storage.googleapis.com/' + url.replace('gs://', ''))
-        return urls
+        return sort_url_list(cc_values, all_acqdates, all_urls)[-1]
+    return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
 def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False):
     """Query the Sentinel-2 index catalogue and retrieve urls for the best images found."""
-
     print("Searching for Sentinel-2 images in catalog...")
     cc_values = []
     all_urls = []
@@ -90,18 +89,9 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)
 
-    # sort url list by increasing cc_values and acqdate
-    cc_values = sorted(cc_values)
-    all_acqdates = sorted(all_acqdates, reverse=True)
-    all_urls = [x for (y, z, x) in sorted(zip(cc_values, all_acqdates, all_urls))]
-
     if latest and all_urls:
-        return ['http://storage.googleapis.com/' + all_urls[-1].replace('gs://', '')]
-    else:
-        urls = []
-        for url in all_urls:
-            urls.append('http://storage.googleapis.com/' + url.replace('gs://', ''))
-        return urls
+        return sort_url_list(cc_values, all_acqdates, all_urls)[-1]
+    return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
 def get_landsat_image(url, outputdir, overwrite=False):
@@ -115,8 +105,8 @@ def get_landsat_image(url, outputdir, overwrite=False):
         if not os.path.isdir(target_path) or overwrite:
             os.makedirs(target_path)
             target_file = os.path.join(target_path, img + "_" + band)
-            with urllib.request.urlopen(complete_url) as data, open(target_file, 'wb') as target:
-                shutil.copyfileobj(data, target)
+            with urllib.request.urlopen(complete_url) as req, open(target_file, 'wb') as f:
+                shutil.copyfileobj(req, f)
 
 
 def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
@@ -130,8 +120,8 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
     if not os.path.exists(target_path) or overwrite:
         os.makedirs(target_path)
         manifest_url = url + "/manifest.safe"
-        with urllib.request.urlopen(manifest_url) as data, open(target_manifest, 'wb') as target:
-            shutil.copyfileobj(data, target)
+        with urllib.request.urlopen(manifest_url) as req, open(target_manifest, 'wb') as f:
+            shutil.copyfileobj(req, f)
         with open(target_manifest, 'r') as manifest_file:
             manifest_lines = manifest_file.read().split()
         for line in manifest_lines:
@@ -140,8 +130,8 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
                 abs_path = os.path.join(target_path, *rel_path.split('/')[1:])
                 os.makedirs(os.path.dirname(abs_path), exist_ok=True)
                 try:
-                    with urllib.request.urlopen(url + rel_path) as data, open(abs_path, 'wb') as target:
-                        shutil.copyfileobj(data, target)
+                    with urllib.request.urlopen(url+rel_path) as req, open(abs_path, 'wb') as f:
+                        shutil.copyfileobj(req, f)
                 except urllib.error.HTTPError as error:
                     print("Error downloading {} [{}]".format(url + rel_path, error))
                     continue
@@ -240,8 +230,9 @@ def main():
                     print(url[i])
     else:
         landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
-        url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover,
-                                              options.start_date, options.end_date, options.scene[0:3], options.scene[3:6], options.sat, options.latest)
+        url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
+                                      options.end_date, options.scene[0:3], options.scene[3:6],
+                                      options.sat, options.latest)
         if not url:
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
