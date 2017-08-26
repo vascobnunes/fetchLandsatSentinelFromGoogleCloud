@@ -9,7 +9,11 @@ import tempfile
 import shutil
 import glob
 import gzip
-import urllib.request
+try:
+    from urllib2 import urlopen
+    from urllib2 import HTTPError
+except ImportError:
+    from urllib.request import urlopen, HTTPError
 try:
     from osgeo import gdal
 except ImportError:
@@ -21,10 +25,12 @@ def download_metadata_file(url, outputdir, program):
     """Download and unzip the catalogue files."""
     zipped_index_path = os.path.join(outputdir, 'index_' + program + '.csv.gz')
     if not os.path.isfile(zipped_index_path):
-        os.makedirs(os.path.dirname(zipped_index_path), exist_ok=True)
+        if not os.path.exists(os.path.dirname(zipped_index_path)):
+            os.makedirs(os.path.dirname(zipped_index_path))
         print("Downloading Metadata file...")
-        with urllib.request.urlopen(url) as req, open(zipped_index_path, 'wb') as f:
-            shutil.copyfileobj(req, f)
+        content = urlopen(url)
+        with open(zipped_index_path, 'wb') as f:
+            shutil.copyfileobj(content, f)
     index_path = os.path.join(outputdir, 'index_' + program + '.csv')
     if not os.path.isfile(index_path):
         print("Unzipping Metadata file...")
@@ -66,7 +72,7 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
                 all_acqdates.append(acqdate)
 
     if latest and all_urls:
-        return sort_url_list(cc_values, all_acqdates, all_urls)[-1]
+        return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
     return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
@@ -90,7 +96,7 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
                 all_acqdates.append(acqdate)
 
     if latest and all_urls:
-        return sort_url_list(cc_values, all_acqdates, all_urls)[-1]
+        return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
     return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
@@ -105,8 +111,9 @@ def get_landsat_image(url, outputdir, overwrite=False):
         if not os.path.isdir(target_path) or overwrite:
             os.makedirs(target_path)
             target_file = os.path.join(target_path, img + "_" + band)
-            with urllib.request.urlopen(complete_url) as req, open(target_file, 'wb') as f:
-                shutil.copyfileobj(req, f)
+            content = urlopen(complete_url)
+            with open(target_file, 'wb') as f:
+                shutil.copyfileobj(content, f)
 
 
 def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
@@ -120,25 +127,30 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
     if not os.path.exists(target_path) or overwrite:
         os.makedirs(target_path)
         manifest_url = url + "/manifest.safe"
-        with urllib.request.urlopen(manifest_url) as req, open(target_manifest, 'wb') as f:
-            shutil.copyfileobj(req, f)
+        content = urlopen(manifest_url)
+        with open(target_manifest, 'wb') as f:
+            shutil.copyfileobj(content, f)
         with open(target_manifest, 'r') as manifest_file:
             manifest_lines = manifest_file.read().split()
         for line in manifest_lines:
             if 'href' in line:
                 rel_path = line[7:line.find("><") - 2]
                 abs_path = os.path.join(target_path, *rel_path.split('/')[1:])
-                os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+                if not os.path.exists(os.path.dirname(abs_path)):
+                    os.makedirs(os.path.dirname(abs_path))
                 try:
-                    with urllib.request.urlopen(url+rel_path) as req, open(abs_path, 'wb') as f:
-                        shutil.copyfileobj(req, f)
-                except urllib.error.HTTPError as error:
+                    content = urlopen(url+rel_path)
+                    with open(abs_path, 'wb') as f:
+                        shutil.copyfileobj(content, f)
+                except HTTPError as error:
                     print("Error downloading {} [{}]".format(url + rel_path, error))
                     continue
         granule = os.path.dirname(os.path.dirname(get_S2_image_bands(target_path, "B01")))
         for extra_dir in ("AUX_DATA", "HTML"):
-            os.makedirs(os.path.join(target_path, extra_dir))
-            os.makedirs(os.path.join(granule, extra_dir))
+            if not os.path.exists(os.path.join(target_path, extra_dir)):
+                os.makedirs(os.path.join(target_path, extra_dir))
+            if not os.path.exists(os.path.join(granule, extra_dir)):
+                os.makedirs(os.path.join(granule, extra_dir))
         if not manifest_lines:
             print()
     if partial:
@@ -183,9 +195,9 @@ def check_full_tile(image):
             # check if cell_value is NaN
             if cell_value == 0:
                 # add cell_value to dictionary
-                try:
+                if cell_value in count:
                     count[cell_value] += 1
-                except:
+                else:
                     count[cell_value] = 1
                 break
     for key in sorted(count.keys()):

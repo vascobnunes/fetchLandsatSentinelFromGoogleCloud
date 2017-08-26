@@ -6,7 +6,7 @@ Once found, it downloads the image files.
 
 Small demo video: https://youtu.be/8zCs0nxl-rU
 
-Developed with/for Python 3.4+ (might work in earlier 3.x though)
+Developed with/for Python 2.7 and 3.3+
 You may either install the package through pip:
 
 `       pip install fels`
