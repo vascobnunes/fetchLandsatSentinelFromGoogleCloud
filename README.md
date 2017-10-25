@@ -64,3 +64,4 @@ You can read more about the public google access to Landsat and Sentinel-2 data 
 Contributors (THANK YOU!):
  - https://github.com/framioco
  - https://github.com/bendv
+ - https://github.com/GreatEmerald
