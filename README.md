@@ -53,6 +53,8 @@ Options:
 
 `         --latest LATEST,                      Choose the most recent image(s) that meet(s) the search criteria`
 
+`         --noinspire,                          Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)`
+
 `         --overwrite,                          Overwrite files if existing locally`
 
 `         --outputcatalogs=OUTPUTCATALOGS       Where to download metadata catalog files`

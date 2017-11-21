@@ -9,6 +9,7 @@ import tempfile
 import shutil
 import glob
 import gzip
+import xml.etree.ElementTree as ET
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -116,7 +117,7 @@ def get_landsat_image(url, outputdir, overwrite=False):
                 shutil.copyfileobj(content, f)
 
 
-def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
+def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspire=False):
     """
     Collect the entire dir structure of the image files from the
     manifest.safe file and build the same structure in the output
@@ -158,6 +159,10 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False):
         if tile_chk == 'Partial':
             print("Removing partial tile image files...")
             shutil.rmtree(target_path)
+    if not noinspire:
+        inspire_file = os.path.join(target_path, "INSPIRE.xml")
+        inspire_path = get_S2_INSPIRE_title(inspire_file)
+        os.rename(target_path, inspire_path)
 
 
 def get_S2_image_bands(image_path, band):
@@ -169,6 +174,14 @@ def get_S2_image_bands(image_path, band):
     files = glob.glob(list_files + "/*.jp2")
     match_band = [x for x in files if x.find(band) > 0][0]
     return match_band
+
+
+def get_S2_INSPIRE_title(image_inspire_xml):
+    tree = ET.parse(image_inspire_xml)
+    chartstring_element = tree.findall(
+        ".//{http://www.isotc211.org/2005/gmd}identificationInfo/{http://www.isotc211.org/2005/gmd}MD_DataIdentification/{http://www.isotc211.org/2005/gmd}citation/{http://www.isotc211.org/2005/gmd}CI_Citation/{http://www.isotc211.org/2005/gmd}title/{http://www.isotc211.org/2005/gco}CharacterString")
+    s2_file_inspire_title = chartstring_element[0].text
+    return s2_file_inspire_title
 
 
 def check_full_tile(image):
@@ -215,8 +228,9 @@ def main():
     parser.add_argument("-o", "--output", help="Where to download files", default=os.getcwd())
     parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
     parser.add_argument("--latest", help="Limit to the latest scene", action="store_true", default=False)
+    parser.add_argument("--noinspire", help="Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)", action="store_true", default=False)
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
-    parser.add_argument("--overwrite", help="Overwrite files if existing locally", default=False)
+    parser.add_argument("--overwrite", help="Overwrite files if existing locally", action="store_true", default=False)
     parser.add_argument("-l", "--list", help="List available download url's and exit without downloading", action="store_true", default=False)
     options = parser.parse_args()
 
@@ -237,7 +251,7 @@ def main():
             for i, u in enumerate(url):
                 if not options.list:
                     print("Downloading {} of {}...".format(i+1, len(url)))
-                    get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial)
+                    get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire)
                 else:
                     print(url[i])
     else:
