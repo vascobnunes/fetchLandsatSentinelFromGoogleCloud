@@ -1,0 +1,6 @@
+{
+  "name": "newoffice",
+  "dependencies": {
+    "gdal": "^2.2.2"
+  }
+}
