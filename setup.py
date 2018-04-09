@@ -1,7 +1,7 @@
 try:
     from setuptools import setup
 
-    setup_kwargs = {'entry_points': {'console_scripts': ['fels=fels.fetchFromGoogleCloud:main']}}
+    setup_kwargs = {'entry_points': {'console_scripts': ['fels=fels.fels:main']}}
 except ImportError:
     from distutils.core import setup
 
