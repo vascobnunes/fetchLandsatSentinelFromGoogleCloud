@@ -107,14 +107,15 @@ def get_landsat_image(url, outputdir, overwrite=False):
     possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF', 'B6_VCID_1.TIF',
                       'B6_VCID_2.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
     target_path = os.path.join(outputdir, img)
-    if os.path.isdir(target_path) and not overwrite:
-        print(target_path, "exists and --overwrite option was not used. Skipping image download")
-        return
+
     if not os.path.isdir(target_path):
         os.makedirs(target_path)
     for band in possible_bands:
         complete_url = url + "/" + img + "_" + band
         target_file = os.path.join(target_path, img + "_" + band)
+        if os.path.exists(target_file) and not overwrite:
+            print(target_file, "exists and --overwrite option was not used. Skipping image download")
+            continue
         try:
             content = urlopen(complete_url)
         except HTTPError:
