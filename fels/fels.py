@@ -6,6 +6,7 @@ import datetime
 import os
 import sys
 import tempfile
+import time
 import shutil
 import glob
 import gzip
@@ -13,8 +14,9 @@ import xml.etree.ElementTree as ET
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
+    from urllib2 import URLError
 except ImportError:
-    from urllib.request import urlopen, HTTPError
+    from urllib.request import urlopen, HTTPError, URLError
 try:
     from osgeo import gdal
 except ImportError:
@@ -121,6 +123,11 @@ def get_landsat_image(url, outputdir, overwrite=False):
         except HTTPError:
             print("Could not find", band, "band image file.")
             continue
+        except URLError:
+            print("Timeout, Restart=======>")
+            time.sleep(10)
+            get_landsat_image(url, outputdir, overwrite, sat)
+            return
         with open(target_file, 'wb') as f:
             shutil.copyfileobj(content, f)
             print("Downloaded", target_file)
