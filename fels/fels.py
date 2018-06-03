@@ -126,10 +126,16 @@ def get_landsat_image(url, outputdir, overwrite=False):
         except URLError:
             print("Timeout, Restart=======>")
             time.sleep(10)
-            get_landsat_image(url, outputdir, overwrite, sat)
+            get_landsat_image(url, outputdir, overwrite)
             return
         with open(target_file, 'wb') as f:
-            shutil.copyfileobj(content, f)
+            try:
+                shutil.copyfileobj(content, f)
+            except socket.timeout:
+                print("Socket Timeout, Restart=======>")
+                time.sleep(10)
+                get_landsat_image(url, outputdir, overwrite)
+                return
             print("Downloaded", target_file)
 
 
