@@ -135,7 +135,7 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
             print(target_file, "exists and --overwrite option was not used. Skipping image download")
             continue
         try:
-            content = urlopen(complete_url)
+            content = urlopen(complete_url, timeout=600)
         except HTTPError:
             print("Could not find", band, "band image file.")
             continue
