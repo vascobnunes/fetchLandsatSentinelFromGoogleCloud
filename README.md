@@ -21,15 +21,15 @@ Usage examples:
 
  - LINUX:
 
-`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp`
+`       fels 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp`
 
-`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 -o ~/SENTINEL2 -l --outputcatalogs /tmp`
+`       fels 44UPU S2 2016-10-01 2016-12-31 -o ~/SENTINEL2 -l --outputcatalogs /tmp`
 
  - WINDOWS:
 
-`       python fetchFromGoogleCloud.py 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o %TEMP%\LANDSAT --latest --outputcatalogs %TEMP%\LANDSAT`
+`       fels 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o %TEMP%\LANDSAT --latest --outputcatalogs %TEMP%\LANDSAT`
 
-`       python fetchFromGoogleCloud.py 44UPU S2 2016-10-01 2016-12-31 -o %TEMP%\SENTINEL2 -l --outputcatalogs %TEMP%\SENTINEL2`
+`       fels 44UPU S2 2016-10-01 2016-12-31 -o %TEMP%\SENTINEL2 -l --outputcatalogs %TEMP%\SENTINEL2`
 
 Options:
 
