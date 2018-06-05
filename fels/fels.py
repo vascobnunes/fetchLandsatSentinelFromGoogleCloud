@@ -4,8 +4,10 @@ import argparse
 import csv
 import datetime
 import os
+import socket
 import sys
 import tempfile
+import time
 import shutil
 import glob
 import gzip
@@ -13,8 +15,9 @@ import xml.etree.ElementTree as ET
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
+    from urllib2 import URLError
 except ImportError:
-    from urllib.request import urlopen, HTTPError
+    from urllib.request import urlopen, HTTPError, URLError
 try:
     from osgeo import gdal
 except ImportError:
@@ -101,27 +104,54 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
     return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
-def get_landsat_image(url, outputdir, overwrite=False):
+def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
     """Download a Landsat image file."""
     img = os.path.basename(url)
-    possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF', 'B6.TIF', 'B6_VCID_1.TIF',
-                      'B6_VCID_2.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+    if sat == "TM":
+        possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
+                          'B6.TIF', 'B7.TIF', 'GCP.txt', 'VER.txt', 'VER.jpg',
+                          'ANG.txt', 'BQA.TIF', 'MTL.txt']
+    elif sat == "OLI_TIRS":
+        possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
+                          'B6.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'B10.TIF',
+                          "B11.TIF", 'BQA.TIF', 'MTL.txt']
+    elif sat == "ETM":
+        possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
+                          'B6.TIF', 'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF',
+                          'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+    else:
+        possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
+                          'B6.TIF', 'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF',
+                          'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+
     target_path = os.path.join(outputdir, img)
-    if os.path.isdir(target_path) and not overwrite:
-        print(target_path, "exists and --overwrite option was not used. Skipping image download")
-        return
+
     if not os.path.isdir(target_path):
         os.makedirs(target_path)
     for band in possible_bands:
         complete_url = url + "/" + img + "_" + band
         target_file = os.path.join(target_path, img + "_" + band)
+        if os.path.exists(target_file) and not overwrite:
+            print(target_file, "exists and --overwrite option was not used. Skipping image download")
+            continue
         try:
-            content = urlopen(complete_url)
+            content = urlopen(complete_url, timeout=600)
         except HTTPError:
             print("Could not find", band, "band image file.")
             continue
+        except URLError:
+            print("Timeout, Restart=======>")
+            time.sleep(10)
+            get_landsat_image(url, outputdir, overwrite, sat)
+            return
         with open(target_file, 'wb') as f:
-            shutil.copyfileobj(content, f)
+            try:
+                shutil.copyfileobj(content, f)
+            except socket.timeout:
+                print("Socket Timeout, Restart=======>")
+                time.sleep(10)
+                get_landsat_image(url, outputdir, overwrite, sat)
+                return
             print("Downloaded", target_file)
 
 
@@ -274,7 +304,7 @@ def main():
             for i, u in enumerate(url):
                 if not options.list:
                     print("Downloading {} of {}...".format(i+1, len(url)))
-                    get_landsat_image(u, options.output, options.overwrite)
+                    get_landsat_image(u, options.output, options.overwrite, options.sat)
                 else:
                     print(url[i])
 
