@@ -7,6 +7,7 @@ import os
 import socket
 import sys
 import tempfile
+import pycurl
 import time
 import shutil
 import glob
@@ -104,6 +105,17 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
     return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
+def download_file(url, destination_filename):
+    """Function to download files using pycurl lib"""
+    fp = open(destination_filename, "wb")
+    curl = pycurl.Curl()
+    curl.setopt(pycurl.URL, url)
+    curl.setopt(pycurl.WRITEDATA, fp)
+    curl.perform()
+    curl.close()
+    fp.close()
+
+
 def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
     """Download a Landsat image file."""
     img = os.path.basename(url)
@@ -178,9 +190,7 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
                 if not os.path.exists(os.path.dirname(abs_path)):
                     os.makedirs(os.path.dirname(abs_path))
                 try:
-                    content = urlopen(url+rel_path)
-                    with open(abs_path, 'wb') as f:
-                        shutil.copyfileobj(content, f)
+                    download_file(url + rel_path, abs_path)
                 except HTTPError as error:
                     print("Error downloading {} [{}]".format(url + rel_path, error))
                     continue
@@ -199,8 +209,12 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
             shutil.rmtree(target_path)
     if not noinspire:
         inspire_file = os.path.join(target_path, "INSPIRE.xml")
-        inspire_path = get_S2_INSPIRE_title(inspire_file)
-        os.rename(target_path, inspire_path)
+        if os.path.isfile(inspire_file):
+            inspire_path = get_S2_INSPIRE_title(inspire_file)
+            if os.path.basename(target_path) != inspire_path:
+                os.rename(target_path, inspire_path)
+        else:
+            print(f"File {inspire_file} could not be found.")
 
 
 def get_S2_image_bands(image_path, band):
@@ -307,6 +321,7 @@ def main():
                     get_landsat_image(u, options.output, options.overwrite, options.sat)
                 else:
                     print(url[i])
+
 
 if __name__ == "__main__":
     main()

@@ -2,3 +2,6 @@
 dist/
 FeLS.egg-info/
 .vscode/
+build/lib/fels/tests.py
+build/lib/fels/fels.py
+build/lib/fels/__init__.py
