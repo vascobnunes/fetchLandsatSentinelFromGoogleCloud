@@ -61,6 +61,8 @@ Options:
 
 Run the script with -h switch for more help usage.
 
+NOTE: Do not use python 3.8! Python 3.7.3 is good.
+
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
 
 Contributors (THANK YOU!):

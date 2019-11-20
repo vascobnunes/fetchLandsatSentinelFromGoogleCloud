@@ -7,7 +7,7 @@ except ImportError:
 
     setup_kwargs = {'scripts': ['bin/fels']}
 
-tag = '1.3.5'
+tag = '1.3.6'
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -24,6 +24,6 @@ setup(name='FeLS',
       license='GPL',
       zip_safe=False,
       packages=['fels'],
-      install_requires=['numpy', 'pycurl'],
+      install_requires=['numpy', 'requests'],
       dependency_links=['https://www.conan.io/source/Gdal/2.1.3/osechet/stable'],
       **setup_kwargs)

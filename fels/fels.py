@@ -7,7 +7,7 @@ import os
 import socket
 import sys
 import tempfile
-import pycurl
+import requests
 import time
 import shutil
 import glob
@@ -107,13 +107,9 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
 
 def download_file(url, destination_filename):
     """Function to download files using pycurl lib"""
-    fp = open(destination_filename, "wb")
-    curl = pycurl.Curl()
-    curl.setopt(pycurl.URL, url)
-    curl.setopt(pycurl.WRITEDATA, fp)
-    curl.perform()
-    curl.close()
-    fp.close()
+    with requests.get(url, stream=True) as r:
+        with open(destination_filename, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
 
 
 def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
