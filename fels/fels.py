@@ -181,7 +181,8 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
             manifest_lines = manifest_file.read().split()
         for line in manifest_lines:
             if 'href' in line:
-                rel_path = line[7:line.find("><") - 2]
+                rel_path = line[line.find('href=".')+7:]
+                rel_path = rel_path[:rel_path.find('"')]               
                 abs_path = os.path.join(target_path, *rel_path.split('/')[1:])
                 if not os.path.exists(os.path.dirname(abs_path)):
                     os.makedirs(os.path.dirname(abs_path))
