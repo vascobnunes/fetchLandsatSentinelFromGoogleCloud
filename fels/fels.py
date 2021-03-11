@@ -271,9 +271,9 @@ def convert_wkt_to_scene(sat, wkt):
     import geopandas
 
     if sat == 'S2':
-        path = os.path.join(os.path.dirname(__file__), 'Sentinel-2-Shapefile-Index', 'sentinel_2_index_shapefile.shp')
+        path = os.path.join(os.path.dirname(__file__), 'data', 'sentinel_2_index_shapefile.shp')
     else:
-        path = os.path.join(os.path.dirname(__file__), 'WRS2_descending_0', 'WRS2_descending.shp')
+        path = os.path.join(os.path.dirname(__file__), 'data', 'WRS2_descending.shp')
     gdf = geopandas.read_file(path)
     shape = loads(wkt)
     found = gdf[gdf.geometry.contains(shape)]
