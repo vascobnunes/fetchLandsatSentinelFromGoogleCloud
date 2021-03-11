@@ -266,17 +266,25 @@ def check_full_tile(image):
             return "Partial"
 
 
-def convert_wkt_to_scene(sat, wkt):
-    from shapely.wkt import loads
+def convert_wkt_to_scene(sat, wkt, geometry):
     import geopandas
+    import json
+    from shapely.wkt import loads
+    from shapely.geometry import shape
 
     if sat == 'S2':
         path = os.path.join(os.path.dirname(__file__), 'data', 'sentinel_2_index_shapefile.shp')
     else:
         path = os.path.join(os.path.dirname(__file__), 'data', 'WRS2_descending.shp')
+
+    if wkt:
+        feat = loads(geometry)
+    else:
+        feat = shape(json.loads(geometry))
+
     gdf = geopandas.read_file(path)
-    shape = loads(wkt)
-    found = gdf[gdf.geometry.contains(shape)]
+    found = gdf[gdf.geometry.contains(feat)]
+
     # TODO: handle multiple tiles
     if sat == 'S2':
         return found.Name.values[0]
@@ -290,7 +298,8 @@ def main():
     parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("-s", "--scene", help="WRS2 coordinates of scene (ex 198030)", default=None)
-    parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid Well Known Text (WKT). This is only used if --scene is blank.", default=None)
+    parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.", default=None)
+    parser.add_argument("--wkt", help="Signify the geometry is in WKT format.", action="store_true", default=False)
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=os.getcwd())
     parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
@@ -305,7 +314,7 @@ def main():
         options.outputcatalogs = options.output
 
     if not options.scene and options.geometry:
-        options.scene = convert_wkt_to_scene(options.sat, options.geometry)
+        options.scene = convert_wkt_to_scene(options.sat, options.wkt, options.geometry)
         print(f'Converted WKT to scene: {options.scene}')
 
     LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'

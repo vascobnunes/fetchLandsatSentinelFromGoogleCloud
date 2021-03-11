@@ -41,10 +41,17 @@ fels OLI_TIRS 2015-01-01 2015-06-30 -s 203031 -c 30 -o ~/LANDSAT --latest --outp
 fels S2 2016-10-01 2016-12-31 -s 44UPU -o ~/SENTINEL2 -l --outputcatalogs /tmp
 ```
 
-or you can use Well Known Text (WKT) geometry:
+You can also use GeoJSON geomerty to perform a search:
 
 ```
-fels OLI_TIRS 2015-01-01 2015-06-30 -g 'POINT (-105.2705 40.015)' -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp
+fels OLI_TIRS 2015-01-01 2015-06-30 -g '{"type":"Polygon","coordinates":[[[-122.71,37.54],[-122.71,37.90],[-121.99,37.90],[-121.99,37.54],[-122.71,37.54]]]}' -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp
+
+```
+
+or you can use Well Known Text (WKT) geometry (note the addition `--wkt` flag):
+
+```
+fels OLI_TIRS 2015-01-01 2015-06-30 -g 'POINT (-105.2705 40.015)' --wkt -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp
 ```
 
 
