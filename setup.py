@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-name='FeLS',
+    name='FeLS',
     version=tag,
     py_modules=['fels'],
     description='Fetch Landsat & Sentinel Data from google cloud',
