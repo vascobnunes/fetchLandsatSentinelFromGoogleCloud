@@ -24,6 +24,6 @@ setup(name='FeLS',
       license='GPL',
       zip_safe=False,
       packages=['fels'],
-      install_requires=['numpy', 'requests'],
+      install_requires=['numpy', 'requests', 'shapely', 'geopandas',],
       dependency_links=['https://www.conan.io/source/Gdal/2.1.3/osechet/stable'],
       **setup_kwargs)
