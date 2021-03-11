@@ -5,3 +5,5 @@ FeLS.egg-info/
 build/lib/fels/tests.py
 build/lib/fels/fels.py
 build/lib/fels/__init__.py
+**/*.DS_Store
+**/*.pyc
