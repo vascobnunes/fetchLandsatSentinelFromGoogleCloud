@@ -6,7 +6,6 @@ import datetime
 import os
 import socket
 import sys
-import tempfile
 import requests
 import time
 import shutil
@@ -182,7 +181,7 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
         for line in manifest_lines:
             if 'href' in line:
                 rel_path = line[line.find('href=".')+7:]
-                rel_path = rel_path[:rel_path.find('"')]               
+                rel_path = rel_path[:rel_path.find('"')]
                 abs_path = os.path.join(target_path, *rel_path.split('/')[1:])
                 if not os.path.exists(os.path.dirname(abs_path)):
                     os.makedirs(os.path.dirname(abs_path))
@@ -267,12 +266,31 @@ def check_full_tile(image):
             return "Partial"
 
 
+def convert_wkt_to_scene(sat, wkt):
+    from shapely.wkt import loads
+    import geopandas
+
+    if sat == 'S2':
+        path = os.path.join(os.path.dirname(__file__), 'Sentinel-2-Shapefile-Index', 'sentinel_2_index_shapefile.shp')
+    else:
+        path = os.path.join(os.path.dirname(__file__), 'WRS2_descending_0', 'WRS2_descending.shp')
+    gdf = geopandas.read_file(path)
+    shape = loads(wkt)
+    found = gdf[gdf.geometry.contains(shape)]
+    # TODO: handle multiple tiles
+    if sat == 'S2':
+        return found.Name.values[0]
+    else:
+        return found.WRSPR.values[0]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Find and download Landsat and Sentinel-2 data from the public Google Cloud")
-    parser.add_argument("scene", help="WRS2 coordinates of scene (ex 198030)")
     parser.add_argument("sat", help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'])
     parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
+    parser.add_argument("-s", "--scene", help="WRS2 coordinates of scene (ex 198030)", default=None)
+    parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid Well Known Text (WKT). This is only used if --scene is blank.", default=None)
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=os.getcwd())
     parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
@@ -285,6 +303,10 @@ def main():
 
     if not options.outputcatalogs:
         options.outputcatalogs = options.output
+
+    if not options.scene and options.geometry:
+        options.scene = convert_wkt_to_scene(options.sat, options.geometry)
+        print(f'Converted WKT to scene: {options.scene}')
 
     LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
     SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
