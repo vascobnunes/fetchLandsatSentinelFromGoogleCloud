@@ -134,8 +134,7 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
 
     target_path = os.path.join(outputdir, img)
 
-    if not os.path.isdir(target_path):
-        os.makedirs(target_path)
+    os.makedirs(target_path, exist_ok=True)
     for band in possible_bands:
         complete_url = url + "/" + img + "_" + band
         target_file = os.path.join(target_path, img + "_" + band)
@@ -172,7 +171,7 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
     target_path = os.path.join(outputdir, img)
     target_manifest = os.path.join(target_path, "manifest.safe")
     if not os.path.exists(target_path) or overwrite:
-        os.makedirs(target_path)
+        os.makedirs(target_path, exist_ok=True)
         manifest_url = url + "/manifest.safe"
         content = urlopen(manifest_url)
         with open(target_manifest, 'wb') as f:
