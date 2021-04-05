@@ -266,6 +266,35 @@ def check_full_tile(image):
             return "Partial"
 
 
+def is_new(safedir_or_manifest):
+    '''
+    Check if a S2 scene is in the new (after Nov 2016) format.
+
+    If the scene is already downloaded, the safedir directory structure can be crawled to determine this.
+    If not, download the manifest.safe first for an equivalent check.
+
+    Example:
+        >>> safedir = 'S2A_MSIL1C_20160106T021717_N0201_R103_T52SDG_20160106T094733.SAFE/'
+        >>> manifest = os.path.join(safedir, 'manifest.safe')
+        >>> assert is_new(safedir) == False
+        >>> assert is_new(manifest) == False
+    '''
+    if os.path.isdir(safedir_or_manifest):
+        safedir = safedir_or_manifest
+        # if this file does not have the standard name (len==0), the scene is old format.
+        # if it is duplicated (len>1), there are multiple granuledirs and we don't want that.
+        return len(glob(os.path.join(safedir, 'GRANULE', '*', 'MTD_TL.xml'))) == 1
+
+    elif os.path.isfile(safedir_or_manifest):
+        manifest = safedir_or_manifest
+        with open(manifest, 'r') as f:
+            lines = f.read().split()
+        return len([l for l in lines if 'MTD_TL.xml' in l]) == 1
+
+    else:
+        raise ValueError(f'{safedir_or_manifest} is not a safedir or manifest')
+
+
 def main():
     parser = argparse.ArgumentParser(description="Find and download Landsat and Sentinel-2 data from the public Google Cloud")
     parser.add_argument("scene", help="WRS2 coordinates of scene (ex 198030)")
