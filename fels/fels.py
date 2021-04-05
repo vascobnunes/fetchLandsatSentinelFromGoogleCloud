@@ -295,6 +295,47 @@ def is_new(safedir_or_manifest):
         raise ValueError(f'{safedir_or_manifest} is not a safedir or manifest')
 
 
+def safedir_to_datetime(string, product=False):
+    '''
+    Example:
+        >>> from datetime import datetime
+        >>> s = 'S2B_MSIL1C_20181010T021649_N0206_R003_T52SDG_20181010T064007.SAFE'
+        >>> dt = safedir_to_datetime(s)
+        >>> assert dt == datetime(2018, 10, 10, 2, 16, 49)
+
+    References:
+        https://sentinel.esa.int/web/sentinel/user-guides/sentinel-2-msi/naming-convention
+    '''
+    if not product:
+        dt_str = string.split('_')[2]  # this is the "datatake sensing time"
+    else:
+        dt_str = string.split('_')[6].strip(
+            '.SAFE')  # this is the "Product Discriminator"
+    d_str, t_str = dt_str.split('T')
+    d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
+    t = list(map(int, [t_str[:2], t_str[2:4], t_str[4:]]))
+    return datetime(*d, *t)
+
+
+def landsatdir_to_date(string, processing=False):
+    '''
+    Example:
+        >>> from datetime import date
+        >>> s = 'LE07_L1GT_115034_20160707_20161009_01_T2'
+        >>> d = landsatdir_to_date(s)
+        >>> assert d == date(2016, 07, 07)
+
+    References:
+        https://github.com/dgketchum/Landsat578#-1
+    '''
+    if not processing:
+        d_str = string.split('_')[3]  # this is the acquisition date
+    else:
+        d_str = string.split('_')[4]  # this is the processing date
+    d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
+    return date(*d)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Find and download Landsat and Sentinel-2 data from the public Google Cloud")
     parser.add_argument("scene", help="WRS2 coordinates of scene (ex 198030)")
