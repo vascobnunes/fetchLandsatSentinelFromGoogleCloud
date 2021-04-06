@@ -310,7 +310,7 @@ def is_new(safedir_or_manifest):
         safedir = safedir_or_manifest
         # if this file does not have the standard name (len==0), the scene is old format.
         # if it is duplicated (len>1), there are multiple granuledirs and we don't want that.
-        return len(glob(os.path.join(safedir, 'GRANULE', '*', 'MTD_TL.xml'))) == 1
+        return len(glob.glob(os.path.join(safedir, 'GRANULE', '*', 'MTD_TL.xml'))) == 1
 
     elif os.path.isfile(safedir_or_manifest):
         manifest = safedir_or_manifest
