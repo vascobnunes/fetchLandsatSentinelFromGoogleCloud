@@ -13,6 +13,7 @@ import shutil
 import glob
 import gzip
 import xml.etree.ElementTree as ET
+from tempfile import NamedTemporaryFile
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -162,17 +163,36 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
             print("Downloaded", target_file)
 
 
-def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspire=False):
+def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspire=False, reject_old=False):
     """
     Collect the entire dir structure of the image files from the
     manifest.safe file and build the same structure in the output
-    location."""
+    location.
+
+    Returns:
+        True if image was downloaded
+        False if partial=False and image was not fully downloaded
+            or if reject_old=True and it is old-format
+            or if noinspire=False and INSPIRE file is missing
+    """
     img = os.path.basename(url)
     target_path = os.path.join(outputdir, img)
     target_manifest = os.path.join(target_path, "manifest.safe")
+
+    return_status = True
     if not os.path.exists(target_path) or overwrite:
-        os.makedirs(target_path, exist_ok=True)
+
         manifest_url = url + "/manifest.safe"
+
+        if reject_old:
+            # check contents of manifest before downloading the rest
+            content = urlopen(manifest_url)
+            with NamedTemporaryFile() as f:
+                shutil.copyfileobj(content, f)
+                if not is_new(f.name):
+                    return False
+
+        os.makedirs(target_path, exist_ok=True)
         content = urlopen(manifest_url)
         with open(target_manifest, 'wb') as f:
             shutil.copyfileobj(content, f)
@@ -198,11 +218,16 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
                 os.makedirs(os.path.join(granule, extra_dir))
         if not manifest_lines:
             print()
+    elif reject_old and not is_new(target_manifest):
+        print(f'Warning: old-format image {outputdir} exists')
+        return_status = False
+
     if partial:
         tile_chk = check_full_tile(get_S2_image_bands(target_path, "B01"))
         if tile_chk == 'Partial':
             print("Removing partial tile image files...")
             shutil.rmtree(target_path)
+            return_status = False
     if not noinspire:
         inspire_file = os.path.join(target_path, "INSPIRE.xml")
         if os.path.isfile(inspire_file):
@@ -211,7 +236,9 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
                 os.rename(target_path, inspire_path)
         else:
             print(f"File {inspire_file} could not be found.")
-
+            return_status = False
+    
+    return return_status
 
 def get_S2_image_bands(image_path, band):
     image_name = os.path.basename(image_path)
@@ -294,6 +321,34 @@ def is_new(safedir_or_manifest):
     else:
         raise ValueError(f'{safedir_or_manifest} is not a safedir or manifest')
 
+def _dedupe(safedirs, to_return=None):
+    '''
+    Remove old-format scenes from a list of Google Cloud S2 safedirs
+
+    WARNING: this heuristic is usually, but not always, true.
+    Therefore, it is deprecated in favor of is_new, which requires parsing the actual content of the image.
+
+    A failure case:
+        https://console.cloud.google.com/storage/browser/gcp-public-data-sentinel-2/tiles/52/S/DG/S2A_MSIL1C_20160106T021702_N0201_R103_T52SDG_20160106T021659.SAFE
+        https://console.cloud.google.com/storage/browser/gcp-public-data-sentinel-2/tiles/52/S/DG/S2A_MSIL1C_20160106T021717_N0201_R103_T52SDG_20160106T094733.SAFE
+
+    These are the same scene. The first link is new-format. They *should* have the same sensing time, but the second one is offset by 15 ms for unknown reasons.
+
+    Args:
+        to_return: a list of other products (eg urls) indexed to safedirs.
+            if provided, dedupe this as well.
+    '''
+    _safedirs = np.array(sorted(safedirs))
+    datetimes = [safedir_to_datetime(s) for s in _safedirs]
+    prods = [safedir_to_datetime(s, product=True) for s in _safedirs]
+    # first sorted occurrence should be the earliest product discriminator
+    _, idxs = np.unique(datetimes, return_index=True)
+    if to_return is None:
+        return _safedirs[idxs]
+    else:
+        return _safedirs[idxs], np.array(sorted(to_return))[idxs]
+
+
 
 def safedir_to_datetime(string, product=False):
     '''
@@ -351,6 +406,7 @@ def get_parser():
     parser.add_argument("--overwrite", help="Overwrite files if existing locally", action="store_true", default=False)
     parser.add_argument("-l", "--list", help="List available download urls and exit without downloading", action="store_true", default=False)
     parser.add_argument("-d", "--dates", help="List or return dates instead of download urls", action="store_true", default=False)
+    parser.add_argument("-r", "--reject_old", help="For S2, skip redundant old-format (before Nov 2016) images", action="store_true", default=False)
     return parser
 
 
@@ -448,10 +504,15 @@ def _run_fels(options):
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
             print("Found {} files.".format(len(url)))
-            for i, u in enumerate(url):
-                if not options.list:
+            if not options.list:
+                valid_mask = []
+                for i, u in enumerate(url):
                     print("Downloading {} of {}...".format(i+1, len(url)))
-                    get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire)
+                    ok = get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire, options.reject_old)
+                    if not ok:
+                        print(f'Skipped {u}')
+                    valid_mask.append(ok)
+                url = [u for u,m in zip(url, valid_mask) if m]
     else:
         landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
         url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
