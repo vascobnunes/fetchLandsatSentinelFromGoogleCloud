@@ -314,7 +314,7 @@ def safedir_to_datetime(string, product=False):
     d_str, t_str = dt_str.split('T')
     d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
     t = list(map(int, [t_str[:2], t_str[2:4], t_str[4:]]))
-    return datetime(*d, *t)
+    return datetime.datetime(*d, *t)
 
 
 def landsatdir_to_date(string, processing=False):
@@ -333,7 +333,7 @@ def landsatdir_to_date(string, processing=False):
     else:
         d_str = string.split('_')[4]  # this is the processing date
     d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
-    return date(*d)
+    return datetime.date(*d)
 
 
 def get_parser():
@@ -350,6 +350,7 @@ def get_parser():
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
     parser.add_argument("--overwrite", help="Overwrite files if existing locally", action="store_true", default=False)
     parser.add_argument("-l", "--list", help="List available download urls and exit without downloading", action="store_true", default=False)
+    parser.add_argument("-d", "--dates", help="List or return dates instead of download urls", action="store_true", default=False)
     return parser
 
 
@@ -362,10 +363,10 @@ def main():
     if not options.outputcatalogs:
         options.outputcatalogs = options.output
     
-    url = _run_fels(options)
+    urls_or_dates = _run_fels(options)
 
     if options.list:
-        for u in url:
+        for u in urls_or_dates:
             print(u)
 
 
@@ -465,7 +466,18 @@ def _run_fels(options):
                     print("Downloading {} of {}...".format(i+1, len(url)))
                     get_landsat_image(u, options.output, options.overwrite, options.sat)
 
-    return url
+    if options.dates:
+        dirs = [u.split('/')[-1] for u in url]
+        if options.sat == 'S2':
+            datetimes = [safedir_to_datetime(d) for d in dirs]
+            dates = [dt.dates() for dt in datetimes]
+        else:
+            dates = [landsatdir_to_date(d) for d in dirs]
+
+        return dates
+
+    else:
+        return url
 
 if __name__ == "__main__":
     main()
