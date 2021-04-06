@@ -13,6 +13,7 @@ import shutil
 import glob
 import gzip
 import xml.etree.ElementTree as ET
+from tempfile import NamedTemporaryFile
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -122,20 +123,19 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
     elif sat == "OLI_TIRS":
         possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
                           'B6.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'B10.TIF',
-                          "B11.TIF", 'BQA.TIF', 'MTL.txt']
+                          "B11.TIF", 'ANG.txt', 'BQA.TIF', 'MTL.txt']
     elif sat == "ETM":
         possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
-                          'B6.TIF', 'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF',
-                          'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+                          'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF',
+                          'B8.TIF', 'ANG.txt', 'BQA.TIF', 'MTL.txt']
     else:
         possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
                           'B6.TIF', 'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF',
-                          'B8.TIF', 'B9.TIF', 'BQA.TIF', 'MTL.txt']
+                          'B8.TIF', 'B9.TIF', 'ANG.txt', 'BQA.TIF', 'MTL.txt']
 
     target_path = os.path.join(outputdir, img)
 
-    if not os.path.isdir(target_path):
-        os.makedirs(target_path)
+    os.makedirs(target_path, exist_ok=True)
     for band in possible_bands:
         complete_url = url + "/" + img + "_" + band
         target_file = os.path.join(target_path, img + "_" + band)
@@ -163,17 +163,36 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
             print("Downloaded", target_file)
 
 
-def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspire=False):
+def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspire=False, reject_old=False):
     """
     Collect the entire dir structure of the image files from the
     manifest.safe file and build the same structure in the output
-    location."""
+    location.
+
+    Returns:
+        True if image was downloaded
+        False if partial=False and image was not fully downloaded
+            or if reject_old=True and it is old-format
+            or if noinspire=False and INSPIRE file is missing
+    """
     img = os.path.basename(url)
     target_path = os.path.join(outputdir, img)
     target_manifest = os.path.join(target_path, "manifest.safe")
+
+    return_status = True
     if not os.path.exists(target_path) or overwrite:
-        os.makedirs(target_path)
+
         manifest_url = url + "/manifest.safe"
+
+        if reject_old:
+            # check contents of manifest before downloading the rest
+            content = urlopen(manifest_url)
+            with NamedTemporaryFile() as f:
+                shutil.copyfileobj(content, f)
+                if not is_new(f.name):
+                    return False
+
+        os.makedirs(target_path, exist_ok=True)
         content = urlopen(manifest_url)
         with open(target_manifest, 'wb') as f:
             shutil.copyfileobj(content, f)
@@ -199,11 +218,16 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
                 os.makedirs(os.path.join(granule, extra_dir))
         if not manifest_lines:
             print()
+    elif reject_old and not is_new(target_manifest):
+        print(f'Warning: old-format image {outputdir} exists')
+        return_status = False
+
     if partial:
         tile_chk = check_full_tile(get_S2_image_bands(target_path, "B01"))
         if tile_chk == 'Partial':
             print("Removing partial tile image files...")
             shutil.rmtree(target_path)
+            return_status = False
     if not noinspire:
         inspire_file = os.path.join(target_path, "INSPIRE.xml")
         if os.path.isfile(inspire_file):
@@ -212,7 +236,9 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
                 os.rename(target_path, inspire_path)
         else:
             print(f"File {inspire_file} could not be found.")
-
+            return_status = False
+    
+    return return_status
 
 def get_S2_image_bands(image_path, band):
     image_name = os.path.basename(image_path)
@@ -267,7 +293,105 @@ def check_full_tile(image):
             return "Partial"
 
 
-def main():
+def is_new(safedir_or_manifest):
+    '''
+    Check if a S2 scene is in the new (after Nov 2016) format.
+
+    If the scene is already downloaded, the safedir directory structure can be crawled to determine this.
+    If not, download the manifest.safe first for an equivalent check.
+
+    Example:
+        >>> safedir = 'S2A_MSIL1C_20160106T021717_N0201_R103_T52SDG_20160106T094733.SAFE/'
+        >>> manifest = os.path.join(safedir, 'manifest.safe')
+        >>> assert is_new(safedir) == False
+        >>> assert is_new(manifest) == False
+    '''
+    if os.path.isdir(safedir_or_manifest):
+        safedir = safedir_or_manifest
+        # if this file does not have the standard name (len==0), the scene is old format.
+        # if it is duplicated (len>1), there are multiple granuledirs and we don't want that.
+        return len(glob(os.path.join(safedir, 'GRANULE', '*', 'MTD_TL.xml'))) == 1
+
+    elif os.path.isfile(safedir_or_manifest):
+        manifest = safedir_or_manifest
+        with open(manifest, 'r') as f:
+            lines = f.read().split()
+        return len([l for l in lines if 'MTD_TL.xml' in l]) == 1
+
+    else:
+        raise ValueError(f'{safedir_or_manifest} is not a safedir or manifest')
+
+def _dedupe(safedirs, to_return=None):
+    '''
+    Remove old-format scenes from a list of Google Cloud S2 safedirs
+
+    WARNING: this heuristic is usually, but not always, true.
+    Therefore, it is deprecated in favor of is_new, which requires parsing the actual content of the image.
+
+    A failure case:
+        https://console.cloud.google.com/storage/browser/gcp-public-data-sentinel-2/tiles/52/S/DG/S2A_MSIL1C_20160106T021702_N0201_R103_T52SDG_20160106T021659.SAFE
+        https://console.cloud.google.com/storage/browser/gcp-public-data-sentinel-2/tiles/52/S/DG/S2A_MSIL1C_20160106T021717_N0201_R103_T52SDG_20160106T094733.SAFE
+
+    These are the same scene. The first link is new-format. They *should* have the same sensing time, but the second one is offset by 15 ms for unknown reasons.
+
+    Args:
+        to_return: a list of other products (eg urls) indexed to safedirs.
+            if provided, dedupe this as well.
+    '''
+    _safedirs = np.array(sorted(safedirs))
+    datetimes = [safedir_to_datetime(s) for s in _safedirs]
+    prods = [safedir_to_datetime(s, product=True) for s in _safedirs]
+    # first sorted occurrence should be the earliest product discriminator
+    _, idxs = np.unique(datetimes, return_index=True)
+    if to_return is None:
+        return _safedirs[idxs]
+    else:
+        return _safedirs[idxs], np.array(sorted(to_return))[idxs]
+
+
+
+def safedir_to_datetime(string, product=False):
+    '''
+    Example:
+        >>> from datetime import datetime
+        >>> s = 'S2B_MSIL1C_20181010T021649_N0206_R003_T52SDG_20181010T064007.SAFE'
+        >>> dt = safedir_to_datetime(s)
+        >>> assert dt == datetime(2018, 10, 10, 2, 16, 49)
+
+    References:
+        https://sentinel.esa.int/web/sentinel/user-guides/sentinel-2-msi/naming-convention
+    '''
+    if not product:
+        dt_str = string.split('_')[2]  # this is the "datatake sensing time"
+    else:
+        dt_str = string.split('_')[6].strip(
+            '.SAFE')  # this is the "Product Discriminator"
+    d_str, t_str = dt_str.split('T')
+    d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
+    t = list(map(int, [t_str[:2], t_str[2:4], t_str[4:]]))
+    return datetime.datetime(*d, *t)
+
+
+def landsatdir_to_date(string, processing=False):
+    '''
+    Example:
+        >>> from datetime import date
+        >>> s = 'LE07_L1GT_115034_20160707_20161009_01_T2'
+        >>> d = landsatdir_to_date(s)
+        >>> assert d == date(2016, 07, 07)
+
+    References:
+        https://github.com/dgketchum/Landsat578#-1
+    '''
+    if not processing:
+        d_str = string.split('_')[3]  # this is the acquisition date
+    else:
+        d_str = string.split('_')[4]  # this is the processing date
+    d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
+    return datetime.date(*d)
+
+
+def get_parser():
     parser = argparse.ArgumentParser(description="Find and download Landsat and Sentinel-2 data from the public Google Cloud")
     parser.add_argument("scene", help="WRS2 coordinates of scene (ex 198030)")
     parser.add_argument("sat", help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'])
@@ -280,11 +404,94 @@ def main():
     parser.add_argument("--noinspire", help="Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)", action="store_true", default=False)
     parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
     parser.add_argument("--overwrite", help="Overwrite files if existing locally", action="store_true", default=False)
-    parser.add_argument("-l", "--list", help="List available download url's and exit without downloading", action="store_true", default=False)
-    options = parser.parse_args()
+    parser.add_argument("-l", "--list", help="List available download urls and exit without downloading", action="store_true", default=False)
+    parser.add_argument("-d", "--dates", help="List or return dates instead of download urls", action="store_true", default=False)
+    parser.add_argument("-r", "--reject_old", help="For S2, skip redundant old-format (before Nov 2016) images", action="store_true", default=False)
+    return parser
+
+
+def main():
+    '''
+    CLI entrypoint.
+    '''
+    options = get_parser().parse_args()
 
     if not options.outputcatalogs:
         options.outputcatalogs = options.output
+    
+    urls_or_dates = _run_fels(options)
+
+    if options.list:
+        for u in urls_or_dates:
+            print(u)
+
+
+def run_fels(*args, **kwargs):
+    '''
+    Python entrypoint.
+
+    See main() for arguments. Additional options not present in argparse include
+    Args:
+        scene: for Landsat, can pass in a (path,row) tuple such as (115,34)
+        sat: 'L5', 'L7', 'L8' are aliases for 'TM', 'ETM', 'OLI_TIRS'
+        start_date: can pass in a datetime.date directly
+        end_date: can pass in a datetime.date directly
+
+    Other differences from CLI:
+        Returns the list of urls. Therefore, will not print them with list=True.
+
+    Example:
+        >>> # downloading a tile from the CLI
+        >>> os.system('fels 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o . --latest --outputcatalogs ~/data/fels/')
+        >>> # downloading the same tile in Python
+        >>> from datetime import date
+        >>> from fels import run_fels
+        >>> run_fels((203,31), 'L8', date(2015, 1, 1), date(2015, 6, 30), cloudcover=30, output='.', latest=True, outputcatalogs=os.path.expanduser('~/data/fels/'))
+    '''
+
+    assert len(args) == 4
+    scene, sat, start_date, end_date = args
+    
+    # fix alternate args
+
+    if isinstance(scene, tuple):
+        assert len(scene) == 2
+        scene = str(scene[0]).zfill(3) + str(scene[1]).zfill(3)
+
+    landsats = {
+            'L5': 'TM',
+            'L7': 'ETM',
+            'L8': 'OLI_TIRS'
+            }
+    if sat in landsats:
+        sat = landsats[sat]
+    
+    if isinstance(end_date, datetime.date):
+        end_date = end_date.strftime('%Y-%m-%d')
+    if isinstance(start_date, datetime.date):
+        start_date = start_date.strftime('%Y-%m-%d')
+
+    # get defaults from argparse
+
+    defaults = get_parser().parse_args([scene, sat, start_date, end_date])
+
+    # overwrite with user-defined kwargs
+
+    for k in kwargs:
+        assert k in defaults, k
+
+    options_dict = vars(defaults)
+    options_dict.update(kwargs)
+    options = argparse.Namespace(**options_dict)
+
+    # call fels
+    return _run_fels(options)
+
+
+def _run_fels(options):
+    '''
+    Search the catalogs for matching images, download them (if list==False) and return the list of urls.
+    '''
 
     LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
     SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
@@ -297,12 +504,15 @@ def main():
             print("No image was found with the criteria you chose! Please review your parameters and try again.")
         else:
             print("Found {} files.".format(len(url)))
-            for i, u in enumerate(url):
-                if not options.list:
+            if not options.list:
+                valid_mask = []
+                for i, u in enumerate(url):
                     print("Downloading {} of {}...".format(i+1, len(url)))
-                    get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire)
-                else:
-                    print(url[i])
+                    ok = get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire, options.reject_old)
+                    if not ok:
+                        print(f'Skipped {u}')
+                    valid_mask.append(ok)
+                url = [u for u,m in zip(url, valid_mask) if m]
     else:
         landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
         url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
@@ -316,9 +526,19 @@ def main():
                 if not options.list:
                     print("Downloading {} of {}...".format(i+1, len(url)))
                     get_landsat_image(u, options.output, options.overwrite, options.sat)
-                else:
-                    print(url[i])
 
+    if options.dates:
+        dirs = [u.split('/')[-1] for u in url]
+        if options.sat == 'S2':
+            datetimes = [safedir_to_datetime(d) for d in dirs]
+            dates = [dt.dates() for dt in datetimes]
+        else:
+            dates = [landsatdir_to_date(d) for d in dirs]
+
+        return dates
+
+    else:
+        return url
 
 if __name__ == "__main__":
     main()
