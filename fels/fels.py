@@ -418,10 +418,10 @@ def landsatdir_to_date(string, processing=False):
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Find and download Landsat and Sentinel-2 data from the public Google Cloud")
+    parser.add_argument("scene", nargs='?', help="WRS2 coordinates for Landsat (ex 198030) or MGRS for S2 (ex 52SDG). Mutually exclusive with --geometry", default=None)
     parser.add_argument("sat", help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'])
     parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD. Left-exclusive.", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD. Right-exclusive.", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
-    parser.add_argument("-s", "--scene", help="WRS2 coordinates of scene (ex 198030)", default=None)
     parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.", default=None)
     parser.add_argument("--wkt", help="Signify the geometry is in WKT format.", action="store_true", default=False)
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
