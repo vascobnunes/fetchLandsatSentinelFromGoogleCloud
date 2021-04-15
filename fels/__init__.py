@@ -19,5 +19,6 @@ if __name__ == '__main__':
     import os
     home = os.path.expanduser('~')
 
+from . import utils, landsat, sentinel2, fels
 from .fels import *
 # ========================= EOF ====================================================================
