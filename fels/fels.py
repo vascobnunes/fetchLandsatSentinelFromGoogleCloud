@@ -11,6 +11,7 @@ import time
 import shutil
 import glob
 import gzip
+import json
 import xml.etree.ElementTree as ET
 from tempfile import NamedTemporaryFile
 try:
@@ -463,6 +464,7 @@ def run_fels(*args, **kwargs):
         sat: 'L5', 'L7', 'L8' are aliases for 'TM', 'ETM', 'OLI_TIRS'
         start_date: can pass in a datetime.date directly
         end_date: can pass in a datetime.date directly
+        geometry: can pass in GeoJSON as a dict instead of a string
 
     Other differences from CLI:
         Returns the list of urls. Therefore, will not print them with list=True.
@@ -497,6 +499,10 @@ def run_fels(*args, **kwargs):
         end_date = end_date.strftime('%Y-%m-%d')
     if isinstance(start_date, datetime.date):
         start_date = start_date.strftime('%Y-%m-%d')
+
+    if 'geometry' in kwargs:
+        if isinstance(kwargs['geometry'], dict):
+            kwargs['geometry'] = json.dumps(kwargs['geometry'])
 
     # get defaults from argparse
 
