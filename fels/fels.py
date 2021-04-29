@@ -8,31 +8,38 @@ import pkg_resources
 from fels.utils import *
 from fels.landsat import *
 from fels.sentinel2 import *
+import geopandas
+import json
+import shapely as shp
 
-def convert_wkt_to_scene(sat, wkt, geometry):
-    import geopandas
-    import json
-    from shapely.wkt import loads
-    from shapely.geometry import shape
+
+def convert_wkt_to_scene(sat, geometry):
+    '''
+    Args:
+        sat: 'S2', 'ETM', 'OLI_TIRS'
+        geometry: WKT or GeoJSON string
+
+    Returns:
+        List of scenes containing the geometry
+    '''
 
     if sat == 'S2':
         path = pkg_resources.resource_filename(__name__, os.path.join('data', 'sentinel_2_index_shapefile.shp'))
     else:
         path = pkg_resources.resource_filename(__name__, os.path.join('data', 'WRS2_descending.shp'))
 
-    if wkt:
-        feat = loads(geometry)
-    else:
-        feat = shape(json.loads(geometry))
+    try:
+        feat = shp.geometry.shape(json.loads(geometry))
+    except json.JSONDecodeError:
+        feat = shp.wkt.loads(geometry)
 
     gdf = geopandas.read_file(path)
     found = gdf[gdf.geometry.contains(feat)]
 
-    # TODO: handle multiple tiles
     if sat == 'S2':
-        return found.Name.values[0]
+        return found.Name.values
     else:
-        return found.WRSPR.values[0]
+        return found.WRSPR.values
 
 
 def get_parser():
@@ -42,7 +49,6 @@ def get_parser():
     parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD. Left-exclusive.", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD. Right-exclusive.", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.", default=None)
-    parser.add_argument("--wkt", help="Signify the geometry is in WKT format.", action="store_true", default=False)
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=os.getcwd())
     parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
@@ -145,55 +151,65 @@ def _run_fels(options):
     '''
 
     if not options.scene and options.geometry:
-        options.scene = convert_wkt_to_scene(options.sat, options.wkt, options.geometry)
-        print(f'Converted WKT to scene: {options.scene}')
+        scenes = convert_wkt_to_scene(options.sat, options.geometry)
+        if len(scenes) > 0:
+            for i, s in enumerate(scenes):
+                print(f'Converted WKT to scene: {s} [{i}/{len(scenes)}]')
+        else:
+            print('No matching scenes found for WKT!')
+    elif options.scene:
+        scenes = [options.scene]
 
     LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
     SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
 
     # Run functions
-    if options.sat == 'S2':
-        sentinel2_metadata_file = download_metadata_file(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel')
-        url = query_sentinel2_catalogue(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, options.scene, options.latest)
-        if not url:
-            print("No image was found with the criteria you chose! Please review your parameters and try again.")
-        else:
-            print("Found {} files.".format(len(url)))
-            if not options.list:
-                valid_mask = []
-                for i, u in enumerate(url):
-                    print("Downloading {} of {}...".format(i+1, len(url)))
-                    ok = get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire, options.reject_old)
-                    if not ok:
-                        print(f'Skipped {u}')
-                    valid_mask.append(ok)
-                url = [u for u,m in zip(url, valid_mask) if m]
-    else:
-        landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
-        url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
-                                      options.end_date, options.scene[0:3], options.scene[3:6],
-                                      options.sat, options.latest)
-        if not url:
-            print("No image was found with the criteria you chose! Please review your parameters and try again.")
-        else:
-            print("Found {} files.".format(len(url)))
-            for i, u in enumerate(url):
-                if not options.list:
-                    print("Downloading {} of {}...".format(i+1, len(url)))
-                    get_landsat_image(u, options.output, options.overwrite, options.sat)
+    result = []
+    for scene in scenes:
 
-    if options.dates:
-        dirs = [u.split('/')[-1] for u in url]
         if options.sat == 'S2':
-            datetimes = [safedir_to_datetime(d) for d in dirs]
-            dates = [dt.dates() for dt in datetimes]
+            sentinel2_metadata_file = download_metadata_file(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel')
+            url = query_sentinel2_catalogue(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, scene, options.latest)
+            if not url:
+                print("No image was found with the criteria you chose! Please review your parameters and try again.")
+            else:
+                print("Found {} files.".format(len(url)))
+                if not options.list:
+                    valid_mask = []
+                    for i, u in enumerate(url):
+                        print("Downloading {} of {}...".format(i+1, len(url)))
+                        ok = get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire, options.reject_old)
+                        if not ok:
+                            print(f'Skipped {u}')
+                        valid_mask.append(ok)
+                    url = [u for u,m in zip(url, valid_mask) if m]
         else:
-            dates = [landsatdir_to_date(d) for d in dirs]
+            landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
+            url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
+                                          options.end_date, scene[0:3], scene[3:6],
+                                          options.sat, options.latest)
+            if not url:
+                print("No image was found with the criteria you chose! Please review your parameters and try again.")
+            else:
+                print("Found {} files.".format(len(url)))
+                for i, u in enumerate(url):
+                    if not options.list:
+                        print("Downloading {} of {}...".format(i+1, len(url)))
+                        get_landsat_image(u, options.output, options.overwrite, options.sat)
 
-        return dates
+        if options.dates:
+            dirs = [u.split('/')[-1] for u in url]
+            if options.sat == 'S2':
+                datetimes = [safedir_to_datetime(d) for d in dirs]
+                dates = [dt.dates() for dt in datetimes]
+            else:
+                dates = [landsatdir_to_date(d) for d in dirs]
 
-    else:
-        return url
+            result.extend(dates)
 
+        else:
+            result.extend(url)
+
+    return result
 if __name__ == "__main__":
     main()
