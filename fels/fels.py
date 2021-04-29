@@ -13,11 +13,12 @@ import json
 import shapely as shp
 
 
-def convert_wkt_to_scene(sat, geometry):
+def convert_wkt_to_scene(sat, geometry, include_overlap):
     '''
     Args:
         sat: 'S2', 'ETM', 'OLI_TIRS'
         geometry: WKT or GeoJSON string
+        include_overlap: if True, use predicate 'intersects', else use predicate 'contains'
 
     Returns:
         List of scenes containing the geometry
@@ -34,7 +35,10 @@ def convert_wkt_to_scene(sat, geometry):
         feat = shp.wkt.loads(geometry)
 
     gdf = geopandas.read_file(path)
-    found = gdf[gdf.geometry.contains(feat)]
+    if include_overlap:
+        found = gdf[gdf.geometry.intersects(feat)]
+    else:
+        found = gdf[gdf.geometry.contains(feat)]
 
     if sat == 'S2':
         return found.Name.values
@@ -49,6 +53,7 @@ def get_parser():
     parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD. Left-exclusive.", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("end_date", help="End date, in format YYYY-MM-DD. Right-exclusive.", type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d'))
     parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.", default=None)
+    parser.add_argument("-i", "--includeoverlap", help="If -g is used, include scenes that overlap the geometry but do not completely contain it", action='store_true', default=False)
     parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
     parser.add_argument("-o", "--output", help="Where to download files", default=os.getcwd())
     parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
@@ -151,10 +156,10 @@ def _run_fels(options):
     '''
 
     if not options.scene and options.geometry:
-        scenes = convert_wkt_to_scene(options.sat, options.geometry)
+        scenes = convert_wkt_to_scene(options.sat, options.geometry, options.includeoverlap)
         if len(scenes) > 0:
             for i, s in enumerate(scenes):
-                print(f'Converted WKT to scene: {s} [{i}/{len(scenes)}]')
+                print(f'Converted WKT to scene: {s} [{i+1}/{len(scenes)}]')
         else:
             print('No matching scenes found for WKT!')
     elif options.scene:
