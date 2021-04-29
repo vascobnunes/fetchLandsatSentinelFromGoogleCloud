@@ -25,24 +25,9 @@ setup(
     license='GPL',
     zip_safe=False,
     packages=['fels'],
-    package_data={'fels.data': [
-        'WRS2_descending.xml',
-        'sentinel_2_index_shapefile.prj',
-        'WRS2_descending.dbf',
-        'sentinel_2_index_shapefile.sbn',
-        'WRS2_descending.cpg',
-        'WRS2_descending.shp',
-        'WRS2_descending.shx',
-        'WRS2_descending.sbx',
-        'sentinel_2_index_shapefile.cpg',
-        'sentinel_2_index_shapefile.shp',
-        'sentinel_2_index_shapefile.shx',
-        'sentinel_2_index_shapefile.sbx',
-        'WRS2_descending.prj',
-        'WRS2_descending.sbn',
-        'sentinel_2_index_shapefile.dbf',
-        'source_metadata.txt',]
-    },
+    package_data={'': ['data/*']},
+    include_package_data=True,
     install_requires=['numpy', 'requests', 'shapely', 'geopandas',],
     dependency_links=['https://www.conan.io/source/Gdal/2.1.3/osechet/stable'],
     **setup_kwargs)
+

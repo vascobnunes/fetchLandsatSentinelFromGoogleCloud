@@ -4,6 +4,7 @@ import argparse
 import datetime
 import os
 import json
+import pkg_resources
 from fels.utils import *
 from fels.landsat import *
 from fels.sentinel2 import *
@@ -15,9 +16,9 @@ def convert_wkt_to_scene(sat, wkt, geometry):
     from shapely.geometry import shape
 
     if sat == 'S2':
-        path = os.path.join(os.path.dirname(__file__), 'data', 'sentinel_2_index_shapefile.shp')
+        path = pkg_resources.resource_filename(__name__, os.path.join('data', 'sentinel_2_index_shapefile.shp'))
     else:
-        path = os.path.join(os.path.dirname(__file__), 'data', 'WRS2_descending.shp')
+        path = pkg_resources.resource_filename(__name__, os.path.join('data', 'WRS2_descending.shp'))
 
     if wkt:
         feat = loads(geometry)
