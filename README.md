@@ -47,10 +47,10 @@ You can also use GeoJSON geometry to perform a search:
 fels OLI_TIRS 2015-01-01 2015-06-30 -g '{"type":"Polygon","coordinates":[[[-122.71,37.54],[-122.71,37.90],[-121.99,37.90],[-121.99,37.54],[-122.71,37.54]]]}' -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp
 ```
 
-or you can use Well Known Text (WKT) geometry (note the addition `--wkt` flag):
+or you can use Well Known Text (WKT) geometry:
 
 ```
-fels OLI_TIRS 2015-01-01 2015-06-30 -g 'POINT (-105.2705 40.015)' --wkt -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp
+fels OLI_TIRS 2015-01-01 2015-06-30 -g 'POINT (-105.2705 40.015)' -c 30 -o ~/LANDSAT --latest --outputcatalogs /tmp
 ```
 
 
@@ -83,7 +83,7 @@ os.system(('fels OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o . -g \'{"type":"Point",
 # python
 from fels import run_fels
 urls = run_fels(None, 'OLI_TIRS', '2015-01-01', '2015-06-30', cloudcover=30, output='.',
-                geometry='POINT (-105.2705 40.015)', wkt=True,
+                geometry='POINT (-105.2705 40.015)',
                 latest=True, outputcatalogs=os.path.expanduser('~/data/fels/'))
 print(urls)
 
@@ -107,7 +107,7 @@ fels.convert_wkt_to_scene
 Run the script with `-h` switch for parameters:
 
 ```
-usage: fels [-h] [-g GEOMETRY] [--wkt] [-c CLOUDCOVER] [-o OUTPUT] [-e EXCLUDEPARTIAL] [--latest]
+usage: fels [-h] [-g GEOMETRY] [-c CLOUDCOVER] [-o OUTPUT] [-e EXCLUDEPARTIAL] [--latest]
             [--noinspire] [--outputcatalogs OUTPUTCATALOGS] [--overwrite] [-l] [-d] [-r]
             [scene] {TM,ETM,OLI_TIRS,S2} start_date end_date
 
