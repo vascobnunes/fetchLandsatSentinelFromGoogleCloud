@@ -7,7 +7,7 @@ except ImportError:
 
     setup_kwargs = {'scripts': ['bin/fels']}
 
-tag = '1.3.7'
+tag = '1.4.0'
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
