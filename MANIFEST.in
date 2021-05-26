@@ -1,1 +1,6 @@
-include README.md
+include *.md
+include *.rst
+include *.py
+include *.txt
+include *.toml
+include *.ini
