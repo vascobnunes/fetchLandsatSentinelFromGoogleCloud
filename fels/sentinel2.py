@@ -27,74 +27,98 @@ def ensure_sentinel2_metadata(outputdir=None):
 def ensure_sentinel2_sqlite_cache(collection_file):
     import sqlite3
     import ubelt as ub
-    sql_fpath = collection_file + '.sqlite'
+    sql_fpath = collection_file + '.v2.sqlite'
 
     if not os.path.exists(sql_fpath) or os.stat(collection_file).st_mtime > os.stat(sql_fpath).st_mtime:
         # Update the SQL cache if the CSV file was modified.
         ub.delete(sql_fpath)
 
         conn = sqlite3.connect(sql_fpath)
-        cur = conn.cursor()
 
-        cur.execute(ub.codeblock(
-            '''
-            CREATE TABLE IF NOT EXISTS sentinel2 (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                SENSING_TIME TEXT NOT NULL,
-                MGRS_TILE TEXT,
-                BASE_URL TEXT,
-                CLOUD_COVER REAL
-            );
-            '''))
+        try:
+            cur = conn.cursor()
 
-        fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
+            cur.execute(ub.codeblock(
+                '''
+                CREATE TABLE sentinel2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    SENSING_TIME TEXT NOT NULL,
+                    MGRS_TILE TEXT NOT NULL,
+                    BASE_URL TEXT NOT NULL,
+                    CLOUD_COVER REAL NOT NULL
+                );
+                '''))
 
-        insert_statement = '''
-            INSERT INTO sentinel2(''' + ','.join(fields) + ''')
-            VALUES(''' + ','.join('?' * len(fields)) + ''' ) '''
+            fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
 
-        with open(collection_file) as csvfile:
-            reader = csv.DictReader(csvfile)
-            for rx, row in enumerate(ub.ProgIter(reader, desc='populate sqlite database')):
-                vals = [row[k] for k in fields]
-                cur.execute(insert_statement, vals)
+            insert_statement = '''
+                INSERT INTO sentinel2(''' + ','.join(fields) + ''')
+                VALUES(''' + ','.join('?' * len(fields)) + ''' ) '''
 
-        conn.commit()
-        conn.close()
+            with open(collection_file) as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in ub.ProgIter(reader, desc='populate sqlite cache'):
+                    vals = [row[k] for k in fields]
+                    cur.execute(insert_statement, vals)
+
+            # Can we make an efficient date index with sqlite?
+            _ = cur.execute(
+                '''
+                CREATE INDEX MGRS_TILE_INDEX ON sentinel2 (MGRS_TILE);
+                ''')
+
+            conn.commit()
+        finally:
+            conn.close()
     return sql_fpath
 
 
-def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
+s2_conn = None
+
+
+def _global_s2_connect(sql_fpath):
+    # hack to not reconnect each time
+    global s2_conn
     import sqlite3
-    import ubelt as ub
+    if s2_conn is None:
+        conn = sqlite3.connect(sql_fpath)
+        s2_conn = conn
+    return s2_conn
+
+
+def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
+    # import sqlite3
     import dateutil
     sql_fpath = ensure_sentinel2_sqlite_cache(collection_file)
 
-    conn = sqlite3.connect(sql_fpath)
-    cur = conn.cursor()
+    # conn = sqlite3.connect(sql_fpath)
+    conn = _global_s2_connect(sql_fpath)
+    try:
+        cur = conn.cursor()
 
-    result = cur.execute(ub.codeblock(
-        '''
-        SELECT BASE_URL, CLOUD_COVER, SENSING_TIME from sentinel2 WHERE
+        result = cur.execute(
+            '''
+            SELECT BASE_URL, CLOUD_COVER, SENSING_TIME from sentinel2 WHERE
 
-        MGRS_TILE=? AND CLOUD_COVER <= ?
-        and
-        date(SENSING_TIME) BETWEEN date(?) AND date(?)
-        '''), (
-            tile,
-            cc_limit,
-            date_start,
-            date_end,
-        ))
-    cc_values = []
-    all_urls = []
-    all_acqdates = []
-    for found in result:
-        all_urls.append(found[0])
-        cc_values.append(found[1])
-        all_acqdates.append(dateutil.parser.isoparse(found[2]))
-
-    conn.close()
+            MGRS_TILE=? AND CLOUD_COVER <= ?
+            and
+            date(SENSING_TIME) BETWEEN date(?) AND date(?)
+            ''', (
+                tile,
+                cc_limit,
+                date_start,
+                date_end,
+            ))
+        cc_values = []
+        all_urls = []
+        all_acqdates = []
+        for found in result:
+            all_urls.append(found[0])
+            cc_values.append(found[1])
+            all_acqdates.append(dateutil.parser.isoparse(found[2]))
+    finally:
+        # conn.close()
+        pass
 
     if latest and all_urls:
         return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]

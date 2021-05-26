@@ -5,6 +5,7 @@ import gzip
 import json
 import requests
 import pkg_resources
+import ubelt as ub
 try:
     from urllib2 import urlopen
 except ImportError:
@@ -91,13 +92,21 @@ def convert_wkt_to_scene(sat, geometry, include_overlap):
     except json.JSONDecodeError:
         feat = shp.wkt.loads(geometry)
 
-    gdf = geopandas.read_file(path)
+    # gdf = geopandas.read_file(path)
+    gdf = _memo_geopandas_read(path)
+
     if include_overlap:
         found = gdf[gdf.geometry.intersects(feat)]
     else:
+        # This is the bottleneck when the downloaded data exists
         found = gdf[gdf.geometry.contains(feat)]
 
     if sat == 'S2':
         return found.Name.values
     else:
         return found.WRSPR.values
+
+
+@ub.memoize
+def _memo_geopandas_read(path):
+    return geopandas.read_file(path)
