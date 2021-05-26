@@ -5,11 +5,10 @@ import datetime
 import os
 import json
 import pkg_resources
-from fels.utils import *
-from fels.landsat import *
-from fels.sentinel2 import *
+from fels.utils import download_metadata_file
+from fels.landsat import get_landsat_image, query_landsat_catalogue, landsatdir_to_date
+from fels.sentinel2 import query_sentinel2_catalogue, get_sentinel2_image, safedir_to_datetime
 import geopandas
-import json
 import shapely as shp
 
 
@@ -109,7 +108,7 @@ def run_fels(*args, **kwargs):
 
     assert len(args) == 4
     scene, sat, start_date, end_date = args
-    
+
     # fix alternate args
 
     if isinstance(scene, tuple):
@@ -123,7 +122,7 @@ def run_fels(*args, **kwargs):
             }
     if sat in landsats:
         sat = landsats[sat]
-    
+
     if isinstance(end_date, datetime.date):
         end_date = end_date.strftime('%Y-%m-%d')
     if isinstance(start_date, datetime.date):
@@ -182,12 +181,12 @@ def _run_fels(options):
                 if not options.list:
                     valid_mask = []
                     for i, u in enumerate(url):
-                        print("Downloading {} of {}...".format(i+1, len(url)))
+                        print("Downloading {} of {}...".format(i + 1, len(url)))
                         ok = get_sentinel2_image(u, options.output, options.overwrite, options.excludepartial, options.noinspire, options.reject_old)
                         if not ok:
                             print(f'Skipped {u}')
                         valid_mask.append(ok)
-                    url = [u for u,m in zip(url, valid_mask) if m]
+                    url = [u for u, m in zip(url, valid_mask) if m]
         else:
             landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
             url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
@@ -199,7 +198,7 @@ def _run_fels(options):
                 print("Found {} files.".format(len(url)))
                 for i, u in enumerate(url):
                     if not options.list:
-                        print("Downloading {} of {}...".format(i+1, len(url)))
+                        print("Downloading {} of {}...".format(i + 1, len(url)))
                         get_landsat_image(u, options.output, options.overwrite, options.sat)
 
         if options.dates:
@@ -216,5 +215,7 @@ def _run_fels(options):
             result.extend(url)
 
     return result
+
+
 if __name__ == "__main__":
     main()
