@@ -12,19 +12,152 @@ try:
 except ImportError:
     from urllib.request import urlopen, HTTPError, URLError
 
-from fels.utils import sort_url_list
+from fels.utils import sort_url_list, download_metadata_file
 
 
-def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
-                            sensor, latest=False):
-    """Query the Landsat index catalogue and retrieve urls for the best images found."""
-    print("Searching for Landsat-{} images in catalog...".format(sensor))
+LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
+
+
+def ensure_landsat_metadata(outputdir=None):
+    return download_metadata_file(LANDSAT_METADATA_URL, outputdir, 'Landsat')
+
+
+def ensure_landsat_sqlite_cache(collection_file):
+    import sqlite3
+    import ubelt as ub
+    sql_fpath = collection_file + '.sqlite'
+
+    if not os.path.exists(sql_fpath) or os.stat(collection_file).st_mtime > os.stat(sql_fpath).st_mtime:
+        # Update the SQL cache if the CSV file was modified.
+        ub.delete(sql_fpath)
+
+        conn = sqlite3.connect(sql_fpath)
+        cur = conn.cursor()
+
+        cur.execute(ub.codeblock(
+            '''
+            CREATE TABLE IF NOT EXISTS landsat (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SCENE_ID TEXT NOT NULL,
+                SENSOR_ID TEXT,
+                PRODUCT_ID TEXT,
+                BASE_URL TEXT,
+                DATE_ACQUIRED TEXT,
+                WRS_PATH INTEGER,
+                WRS_ROW INTEGER,
+                CLOUD_COVER REAL
+            );
+            '''))
+
+        fields = ['SCENE_ID', 'SENSOR_ID', 'PRODUCT_ID',
+                  'BASE_URL', 'DATE_ACQUIRED', 'WRS_PATH',
+                  'WRS_ROW', 'CLOUD_COVER']
+
+        insert_statement = '''
+            INSERT INTO landsat(''' + ','.join(fields) + ''')
+            VALUES(''' + ','.join('?' * len(fields)) + ''' ) '''
+
+        with open(collection_file) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for rx, row in enumerate(ub.ProgIter(reader, desc='populate sqlite database')):
+                vals = [row[k] for k in fields]
+                cur.execute(insert_statement, vals)
+
+        conn.commit()
+        conn.close()
+    return sql_fpath
+
+
+def query_landsat_with_sqlite(collection_file, cc_limit, date_start, date_end,
+                              wr2path, wr2row, sensor, latest=False):
+    import sqlite3
+    import ubelt as ub
+    import dateutil
+    sql_fpath = ensure_landsat_sqlite_cache(collection_file)
+
+    conn = sqlite3.connect(sql_fpath)
+    cur = conn.cursor()
+
+    result = cur.execute(ub.codeblock(
+        '''
+        SELECT BASE_URL, CLOUD_COVER, DATE_ACQUIRED from landsat WHERE
+
+        WRS_PATH=? AND WRS_ROW=? AND SENSOR_ID=? AND CLOUD_COVER <= ?
+        and
+        date(DATE_ACQUIRED) BETWEEN date(?) AND date(?)
+        '''), (
+            int(wr2path),
+            int(wr2row),
+            sensor,
+            cc_limit,
+            date_start,
+            date_end,
+        ))
     cc_values = []
     all_urls = []
     all_acqdates = []
+    for found in result:
+        all_urls.append(found[0])
+        cc_values.append(found[1])
+        all_acqdates.append(dateutil.parser.isoparse(found[2]))
+
+    conn.close()
+
+    if latest and all_urls:
+        return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
+    return sort_url_list(cc_values, all_acqdates, all_urls)
+
+
+def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
+                            sensor, latest=False, use_sql=True):
+    """
+    Query the Landsat index catalogue and retrieve urls for the best images
+    found.
+
+    Example:
+        >>> from fels.utils import convert_wkt_to_scene
+        >>> import dateutil
+        >>> collection_file = ensure_landsat_metadata()
+        >>> cc_limit = 100
+        >>> date_start = dateutil.parser.isoparse('2016-03-14')
+        >>> date_end = dateutil.parser.isoparse('2016-03-16')
+        >>> geometry = json.dumps({
+        >>>     'type': 'Polygon', 'coordinates': [[
+        >>>         [40.4700, -74.2700],
+        >>>         [41.3100, -74.2700],
+        >>>         [41.3100, -71.7500],
+        >>>         [40.4700, -71.7500],
+        >>>         [40.4700, -74.2700],
+        >>>     ]]})
+        >>> scenes = convert_wkt_to_scene('LC', geometry, True)
+        >>> scene = scenes[0]
+        >>> wr2path = scene[0:3]
+        >>> wr2row = scene[3:6]
+        >>> sensor = 'OLI_TIRS'
+        >>> latest = False
+        >>> query_landsat_catalogue(collection_file, cc_limit, date_start,
+        >>>                         date_end, wr2path, wr2row, sensor,
+        >>>                         latest, use_sql=True)
+        >>> if 0:
+        >>>     # Very slow
+        >>>     query_landsat_catalogue(collection_file, cc_limit, date_start,
+        >>>                             date_end, wr2path, wr2row, sensor,
+        >>>                             latest, use_sql=False)
+    """
+    print("Searching for Landsat-{} images in catalog...".format(sensor))
+    if use_sql:
+        # hack for faster query
+        return query_landsat_with_sqlite(
+            collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
+            sensor, latest=latest)
+
+    cc_values = []
+    all_urls = []
+    all_acqdates = []
+    import ubelt as ub
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in reader:
+        for row in ub.ProgIter(reader, desc='searching'):
             year_acq = int(row['DATE_ACQUIRED'][0:4])
             month_acq = int(row['DATE_ACQUIRED'][5:7])
             day_acq = int(row['DATE_ACQUIRED'][8:10])

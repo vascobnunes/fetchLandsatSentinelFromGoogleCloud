@@ -14,18 +14,133 @@ try:
 except ImportError:
     from urllib.request import urlopen, HTTPError
 
-from fels.utils import sort_url_list, download_file
+from fels.utils import sort_url_list, download_file, download_metadata_file
 
 
-def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False):
-    """Query the Sentinel-2 index catalogue and retrieve urls for the best images found."""
+SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
+
+
+def ensure_sentinel2_metadata(outputdir=None):
+    return download_metadata_file(SENTINEL2_METADATA_URL, outputdir, 'Sentinel')
+
+
+def ensure_sentinel2_sqlite_cache(collection_file):
+    import sqlite3
+    import ubelt as ub
+    sql_fpath = collection_file + '.sqlite'
+
+    if not os.path.exists(sql_fpath) or os.stat(collection_file).st_mtime > os.stat(sql_fpath).st_mtime:
+        # Update the SQL cache if the CSV file was modified.
+        ub.delete(sql_fpath)
+
+        conn = sqlite3.connect(sql_fpath)
+        cur = conn.cursor()
+
+        cur.execute(ub.codeblock(
+            '''
+            CREATE TABLE IF NOT EXISTS sentinel2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SENSING_TIME TEXT NOT NULL,
+                MGRS_TILE TEXT,
+                BASE_URL TEXT,
+                CLOUD_COVER REAL
+            );
+            '''))
+
+        fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
+
+        insert_statement = '''
+            INSERT INTO sentinel2(''' + ','.join(fields) + ''')
+            VALUES(''' + ','.join('?' * len(fields)) + ''' ) '''
+
+        with open(collection_file) as csvfile:
+            reader = csv.DictReader(csvfile)
+            for rx, row in enumerate(ub.ProgIter(reader, desc='populate sqlite database')):
+                vals = [row[k] for k in fields]
+                cur.execute(insert_statement, vals)
+
+        conn.commit()
+        conn.close()
+    return sql_fpath
+
+
+def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
+    import sqlite3
+    import ubelt as ub
+    import dateutil
+    sql_fpath = ensure_sentinel2_sqlite_cache(collection_file)
+
+    conn = sqlite3.connect(sql_fpath)
+    cur = conn.cursor()
+
+    result = cur.execute(ub.codeblock(
+        '''
+        SELECT BASE_URL, CLOUD_COVER, SENSING_TIME from sentinel2 WHERE
+
+        MGRS_TILE=? AND CLOUD_COVER <= ?
+        and
+        date(SENSING_TIME) BETWEEN date(?) AND date(?)
+        '''), (
+            tile,
+            cc_limit,
+            date_start,
+            date_end,
+        ))
+    cc_values = []
+    all_urls = []
+    all_acqdates = []
+    for found in result:
+        all_urls.append(found[0])
+        cc_values.append(found[1])
+        all_acqdates.append(dateutil.parser.isoparse(found[2]))
+
+    conn.close()
+
+    if latest and all_urls:
+        return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
+    return sort_url_list(cc_values, all_acqdates, all_urls)
+
+
+def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False, use_sql=True):
+    """
+    Query the Sentinel-2 index catalogue and retrieve urls for the best images
+    found.
+
+    Example:
+        >>> collection_file = ensure_sentinel2_metadata()
+        >>> from fels.utils import convert_wkt_to_scene
+        >>> import dateutil
+        >>> collection_file = ensure_sentinel2_metadata()
+        >>> cc_limit = 100
+        >>> date_start = dateutil.parser.isoparse('2016-10-15')
+        >>> date_end = dateutil.parser.isoparse('2016-10-30')
+        >>> geometry = json.dumps({
+        >>>     'type': 'Polygon', 'coordinates': [[
+        >>>         [40.4700, -74.2700],
+        >>>         [41.3100, -74.2700],
+        >>>         [41.3100, -71.7500],
+        >>>         [40.4700, -71.7500],
+        >>>         [40.4700, -74.2700],
+        >>>     ]]})
+        >>> scenes = convert_wkt_to_scene('S2', geometry, True)
+        >>> tile = scenes[0]
+        >>> latest = False
+        >>> query_sentinel2_catalogue(collection_file, cc_limit, date_start,
+        >>>                         date_end, tile, latest, use_sql=True)
+    """
+    import ubelt as ub
     print("Searching for Sentinel-2 images in catalog...")
+    if use_sql:
+        # hack for faster query
+        return query_sentinel2_with_sqlite(collection_file, cc_limit,
+                                           date_start, date_end, tile,
+                                           latest=latest)
     cc_values = []
     all_urls = []
     all_acqdates = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in reader:
+        for row in ub.ProgIter(reader, desc='searching S2'):
             year_acq = int(row['SENSING_TIME'][0:4])
             month_acq = int(row['SENSING_TIME'][5:7])
             day_acq = int(row['SENSING_TIME'][8:10])

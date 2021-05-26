@@ -4,45 +4,14 @@ import argparse
 import datetime
 import os
 import json
-import pkg_resources
-from fels.utils import download_metadata_file
-from fels.landsat import get_landsat_image, query_landsat_catalogue, landsatdir_to_date
-from fels.sentinel2 import query_sentinel2_catalogue, get_sentinel2_image, safedir_to_datetime
-import geopandas
-import shapely as shp
-
-
-def convert_wkt_to_scene(sat, geometry, include_overlap):
-    '''
-    Args:
-        sat: 'S2', 'ETM', 'OLI_TIRS'
-        geometry: WKT or GeoJSON string
-        include_overlap: if True, use predicate 'intersects', else use predicate 'contains'
-
-    Returns:
-        List of scenes containing the geometry
-    '''
-
-    if sat == 'S2':
-        path = pkg_resources.resource_filename(__name__, os.path.join('data', 'sentinel_2_index_shapefile.shp'))
-    else:
-        path = pkg_resources.resource_filename(__name__, os.path.join('data', 'WRS2_descending.shp'))
-
-    try:
-        feat = shp.geometry.shape(json.loads(geometry))
-    except json.JSONDecodeError:
-        feat = shp.wkt.loads(geometry)
-
-    gdf = geopandas.read_file(path)
-    if include_overlap:
-        found = gdf[gdf.geometry.intersects(feat)]
-    else:
-        found = gdf[gdf.geometry.contains(feat)]
-
-    if sat == 'S2':
-        return found.Name.values
-    else:
-        return found.WRSPR.values
+from fels.landsat import (
+    get_landsat_image, query_landsat_catalogue, landsatdir_to_date,
+    ensure_landsat_metadata)
+from fels.sentinel2 import (
+    query_sentinel2_catalogue, get_sentinel2_image, safedir_to_datetime,
+    ensure_sentinel2_metadata
+)
+from fels.utils import convert_wkt_to_scene
 
 
 def get_parser():
@@ -164,16 +133,16 @@ def _run_fels(options):
     elif options.scene:
         scenes = [options.scene]
 
-    LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
-    SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
-
     # Run functions
     result = []
     for scene in scenes:
 
         if options.sat == 'S2':
-            sentinel2_metadata_file = download_metadata_file(SENTINEL2_METADATA_URL, options.outputcatalogs, 'Sentinel')
-            url = query_sentinel2_catalogue(sentinel2_metadata_file, options.cloudcover, options.start_date, options.end_date, scene, options.latest)
+            sentinel2_metadata_file = ensure_sentinel2_metadata(
+                options.outputcatalogs)
+            url = query_sentinel2_catalogue(
+                sentinel2_metadata_file, options.cloudcover,
+                options.start_date, options.end_date, scene, options.latest)
             if not url:
                 print("No image was found with the criteria you chose! Please review your parameters and try again.")
             else:
@@ -188,10 +157,12 @@ def _run_fels(options):
                         valid_mask.append(ok)
                     url = [u for u, m in zip(url, valid_mask) if m]
         else:
-            landsat_metadata_file = download_metadata_file(LANDSAT_METADATA_URL, options.outputcatalogs, 'Landsat')
-            url = query_landsat_catalogue(landsat_metadata_file, options.cloudcover, options.start_date,
-                                          options.end_date, scene[0:3], scene[3:6],
-                                          options.sat, options.latest)
+            landsat_metadata_file = ensure_landsat_metadata(
+                options.outputcatalogs)
+            url = query_landsat_catalogue(
+                landsat_metadata_file, options.cloudcover, options.start_date,
+                options.end_date, scene[0:3], scene[3:6], options.sat,
+                options.latest)
             if not url:
                 print("No image was found with the criteria you chose! Please review your parameters and try again.")
             else:
