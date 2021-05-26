@@ -143,6 +143,10 @@ def _run_fels(options):
             url = query_sentinel2_catalogue(
                 sentinel2_metadata_file, options.cloudcover,
                 options.start_date, options.end_date, scene, options.latest)
+            print('options.latest = {!r}'.format(options.latest))
+            print('scene = {!r}'.format(scene))
+            print('options.end_date = {!r}'.format(options.end_date))
+            print('options.start_date = {!r}'.format(options.start_date))
             if not url:
                 print("No image was found with the criteria you chose! Please review your parameters and try again.")
             else:

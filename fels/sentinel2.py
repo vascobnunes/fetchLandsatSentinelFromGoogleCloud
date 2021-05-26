@@ -58,7 +58,8 @@ def ensure_sentinel2_sqlite_cache(collection_file):
             with open(collection_file) as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in ub.ProgIter(reader, desc='populate sqlite cache'):
-                    vals = [row[k] for k in fields]
+                    vals = list(ub.take(row, fields))
+                    # vals = [row[k] for k in fields]
                     cur.execute(insert_statement, vals)
 
             # Can we make an efficient date index with sqlite?
@@ -93,6 +94,11 @@ def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end,
 
     # conn = sqlite3.connect(sql_fpath)
     conn = _global_s2_connect(sql_fpath)
+
+    # if 0:
+    #     cur = conn.cursor()
+    #     list(cur.execute('SELECT count(*) from sentinel2'))
+
     try:
         cur = conn.cursor()
 
@@ -171,6 +177,7 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit \
                     and date_start < acqdate < date_end:
+                # print('row = {!r}'.format(row))
                 all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)

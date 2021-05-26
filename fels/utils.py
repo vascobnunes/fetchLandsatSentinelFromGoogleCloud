@@ -96,7 +96,15 @@ def convert_wkt_to_scene(sat, geometry, include_overlap):
     gdf = _memo_geopandas_read(path)
 
     if include_overlap:
-        found = gdf[gdf.geometry.intersects(feat)]
+        # TODO paramatarize thresh
+        thresh = 0.0
+        if thresh > 0:
+            # Requires some minimum overlap
+            overlap = gdf.geometry.intersection(feat).area / feat.area
+            found = gdf[overlap > thresh]
+        else:
+            # Any amount of overlap is ok
+            found = gdf[gdf.geometry.intersects(feat)]
     else:
         # This is the bottleneck when the downloaded data exists
         found = gdf[gdf.geometry.contains(feat)]
