@@ -47,7 +47,7 @@ jobs:
       run: |
         cd dist
         ls -al
-        pip install fels*.whl -v
+        pip install FeLS*.whl -v
     - name: Test Installed Wheel
       run: |
         pwd
