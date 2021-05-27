@@ -47,12 +47,14 @@ jobs:
       run: |
         cd dist
         ls -al
-        pip install line_profiler*.whl -v
-    - name: Test Wheel
+        pip install fels*.whl -v
+    - name: Test Installed Wheel
       run: |
         pwd
         ls -al
-        pytest
+        mkdir -p tmpdir
+        cd tmpdir
+        xdoctest -m fels
 
     - name: Upload Wheel artifact
       uses: actions/upload-artifact@v2
