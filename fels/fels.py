@@ -13,7 +13,7 @@ from fels.sentinel2 import (
     ensure_sentinel2_metadata
 )
 from fels.utils import convert_wkt_to_scene
-import ubelt as ub
+import ubelt as ub  # NOQA
 
 
 def normalize_satcode(sat):
@@ -45,8 +45,8 @@ def get_parser():
     )
     parser.add_argument("scene", nargs='?', help="WRS2 coordinates for Landsat (ex 198030) or MGRS for S2 (ex 52SDG). Mutually exclusive with --geometry", default=None)
     parser.add_argument("sat", help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], type=normalize_satcode, default='S2')
-    parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD. Left-exclusive.", type=dateutil.parser.parse, default=dateutil.parser.parse('2010-01-01'))
-    parser.add_argument("end_date", help="End date, in format YYYY-MM-DD. Right-exclusive.", type=dateutil.parser.parse, default=dateutil.parser.parse('2020-01-01'))
+    parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD. Left-exclusive.", default=('2010-01-01'))
+    parser.add_argument("end_date", help="End date, in format YYYY-MM-DD. Right-exclusive.", default=('2020-01-01'))
     parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.", default=None)
     parser.add_argument("-i", "--includeoverlap", help="If -g is used, include scenes that overlap the geometry but do not completely contain it", action='store_true', default=False)
     parser.add_argument("--minoverlap", help="If -i is not used, include scenes that overlap the geometry but do not completely contain it", action='store_true', default=False)
@@ -133,6 +133,8 @@ def _get_options(*args, **kwargs):
     start_date = kwargs.get('start_date', '2010-01-01')
     end_date = kwargs.get('end_date', '2020-01-01')
 
+    # TODO: can make this logic simpler
+
     # fix alternate args
     if scene is not None:
         if isinstance(scene, tuple):
@@ -140,10 +142,15 @@ def _get_options(*args, **kwargs):
             scene = str(scene[0]).zfill(3) + str(scene[1]).zfill(3)
         kwargs['scene'] = scene
 
+    print('start_date = {!r}'.format(start_date))
     if isinstance(end_date, datetime.date):
-        kwargs['end_date'] = datetime.datetime.isoformat('%Y-%m-%d')
+        end_date = kwargs['end_date'] = datetime.date.isoformat(end_date)
     if isinstance(start_date, datetime.date):
-        kwargs['start_date'] = datetime.datetime.isoformat('%Y-%m-%d')
+        start_date = kwargs['start_date'] = datetime.date.isoformat(start_date)
+    if isinstance(end_date, datetime.datetime):
+        end_date = kwargs['end_date'] = datetime.datetime.isoformat(end_date)
+    if isinstance(start_date, datetime.datetime):
+        start_date = kwargs['start_date'] = datetime.datetime.isoformat(start_date)
 
     if 'geometry' in kwargs:
         if isinstance(kwargs['geometry'], dict):
@@ -151,10 +158,9 @@ def _get_options(*args, **kwargs):
 
     # get defaults from argparse
 
-    kwargs['start_date'] = start_date
-    kwargs['end_date'] = end_date
     kwargs['sat'] = sat
 
+    print('start_date = {!r}'.format(start_date))
     defaults = get_parser().parse_args([scene, sat, start_date, end_date])
 
     # overwrite with user-defined kwargs
