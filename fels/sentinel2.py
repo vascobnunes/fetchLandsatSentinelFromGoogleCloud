@@ -8,13 +8,17 @@ import glob
 import numpy as np
 import xml.etree.ElementTree as ET
 from tempfile import NamedTemporaryFile
+import ubelt as ub
+import dateutil
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
 except ImportError:
     from urllib.request import urlopen, HTTPError
 
-from fels.utils import sort_url_list, download_file, download_metadata_file
+from fels.utils import (
+    sort_url_list, download_file, download_metadata_file,
+    ensure_sqlite_csv_conn)
 
 
 SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
@@ -24,77 +28,28 @@ def ensure_sentinel2_metadata(outputdir=None):
     return download_metadata_file(SENTINEL2_METADATA_URL, outputdir, 'Sentinel')
 
 
-def ensure_sentinel2_sqlite_cache(collection_file):
-    import sqlite3
-    import ubelt as ub
-    sql_fpath = collection_file + '.v2.sqlite'
-
-    if not os.path.exists(sql_fpath) or os.stat(collection_file).st_mtime > os.stat(sql_fpath).st_mtime:
-        # Update the SQL cache if the CSV file was modified.
-        ub.delete(sql_fpath)
-
-        conn = sqlite3.connect(sql_fpath)
-
-        try:
-            cur = conn.cursor()
-
-            cur.execute(ub.codeblock(
-                '''
-                CREATE TABLE sentinel2 (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    SENSING_TIME TEXT NOT NULL,
-                    MGRS_TILE TEXT NOT NULL,
-                    BASE_URL TEXT NOT NULL,
-                    CLOUD_COVER REAL NOT NULL
-                );
-                '''))
-
-            fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
-
-            insert_statement = '''
-                INSERT INTO sentinel2(''' + ','.join(fields) + ''')
-                VALUES(''' + ','.join('?' * len(fields)) + ''' ) '''
-
-            with open(collection_file) as csvfile:
-                reader = csv.DictReader(csvfile)
-                for row in ub.ProgIter(reader, desc='populate sqlite cache'):
-                    vals = list(ub.take(row, fields))
-                    # vals = [row[k] for k in fields]
-                    cur.execute(insert_statement, vals)
-
-            # Can we make an efficient date index with sqlite?
-            _ = cur.execute(
-                '''
-                CREATE INDEX MGRS_TILE_INDEX ON sentinel2 (MGRS_TILE);
-                ''')
-
-            conn.commit()
-        finally:
-            conn.close()
-    return sql_fpath
-
-
-s2_conn = None
-
-
-def _global_s2_connect(sql_fpath):
-    # hack to not reconnect each time
-    global s2_conn
-    import sqlite3
-    if s2_conn is None:
-        conn = sqlite3.connect(sql_fpath)
-        s2_conn = conn
-    return s2_conn
+def ensure_sentinel2_sqlite_conn(collection_file):
+    tablename = 'sentinel2'
+    fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
+    index_cols = ['MGRS_TILE']
+    table_create_cmd = ub.codeblock(
+        '''
+        CREATE TABLE sentinel2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            SENSING_TIME TEXT NOT NULL,
+            MGRS_TILE TEXT NOT NULL,
+            BASE_URL TEXT NOT NULL,
+            CLOUD_COVER REAL NOT NULL
+        );
+        ''')
+    conn = ensure_sqlite_csv_conn(
+        collection_file, fields, table_create_cmd, tablename,
+        index_cols=index_cols, overwrite=False)
+    return conn
 
 
 def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
-    # import sqlite3
-    import dateutil
-    sql_fpath = ensure_sentinel2_sqlite_cache(collection_file)
-
-    # conn = sqlite3.connect(sql_fpath)
-    conn = _global_s2_connect(sql_fpath)
-
+    conn = ensure_sentinel2_sqlite_conn(collection_file)
     # if 0:
     #     cur = conn.cursor()
     #     list(cur.execute('SELECT count(*) from sentinel2'))
@@ -123,8 +78,7 @@ def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end,
             cc_values.append(found[1])
             all_acqdates.append(dateutil.parser.isoparse(found[2]))
     finally:
-        # conn.close()
-        pass
+        cur.close()
 
     if latest and all_urls:
         return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
@@ -137,9 +91,11 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
     found.
 
     Example:
+        >>> from fels.sentinel2 import *  # NOQA
         >>> collection_file = ensure_sentinel2_metadata()
         >>> from fels.utils import convert_wkt_to_scene
         >>> import dateutil
+        >>> import json
         >>> collection_file = ensure_sentinel2_metadata()
         >>> cc_limit = 100
         >>> date_start = dateutil.parser.isoparse('2016-10-15')
@@ -157,6 +113,14 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
         >>> latest = False
         >>> query_sentinel2_catalogue(collection_file, cc_limit, date_start,
         >>>                         date_end, tile, latest, use_sql=True)
+        >>> date_start = dateutil.parser.isoparse('2010-01-01')
+        >>> date_end = dateutil.parser.isoparse('2020-01-01')
+        >>> results = query_sentinel2_catalogue(collection_file, cc_limit, date_start,
+        >>>                         date_end, tile, latest, use_sql=True)
+        >>> print(results[0])
+        >>> print(results[len(results) // 2])
+        >>> print(results[-1])
+        >>> print('results = {!r}'.format(len(results)))
     """
     import ubelt as ub
     print("Searching for Sentinel-2 images in catalog...")

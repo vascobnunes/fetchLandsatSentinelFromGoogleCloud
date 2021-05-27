@@ -5,6 +5,7 @@ import os
 import socket
 import time
 import shutil
+import ubelt as ub
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -12,7 +13,8 @@ try:
 except ImportError:
     from urllib.request import urlopen, HTTPError, URLError
 
-from fels.utils import sort_url_list, download_metadata_file
+from fels.utils import (
+    sort_url_list, download_metadata_file, ensure_sqlite_csv_conn)
 
 
 LANDSAT_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-landsat/index.csv.gz'
@@ -22,89 +24,39 @@ def ensure_landsat_metadata(outputdir=None):
     return download_metadata_file(LANDSAT_METADATA_URL, outputdir, 'Landsat')
 
 
-def ensure_landsat_sqlite_cache(collection_file):
-    import sqlite3
-    import ubelt as ub
-    sql_fpath = collection_file + '.v4.sqlite'
-
-    if not os.path.exists(sql_fpath) or os.stat(collection_file).st_mtime > os.stat(sql_fpath).st_mtime:
-        # Update the SQL cache if the CSV file was modified.
-        ub.delete(sql_fpath)
-
-        conn = sqlite3.connect(sql_fpath)
-
-        try:
-            cur = conn.cursor()
-
-            cur.execute(ub.codeblock(
-                '''
-                CREATE TABLE landsat (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    SCENE_ID TEXT NOT NULL,
-                    SENSOR_ID TEXT NOT NULL,
-                    PRODUCT_ID TEXT NOT NULL,
-                    BASE_URL TEXT NOT NULL,
-                    DATE_ACQUIRED TEXT NOT NULL,
-                    WRS_PATH INTEGER NOT NULL,
-                    WRS_ROW INTEGER NOT NULL,
-                    CLOUD_COVER REAL NOT NULL
-                );
-                '''))
-
-            fields = ['SCENE_ID', 'SENSOR_ID', 'PRODUCT_ID',
-                      'BASE_URL', 'DATE_ACQUIRED', 'WRS_PATH',
-                      'WRS_ROW', 'CLOUD_COVER']
-
-            insert_statement = '''
-                INSERT INTO landsat(''' + ','.join(fields) + ''')
-                VALUES(''' + ','.join('?' * len(fields)) + ''' ) '''
-
-            with open(collection_file) as csvfile:
-                reader = csv.DictReader(csvfile)
-                for row in ub.ProgIter(reader, desc='populate sqlite cache'):
-                    vals = [row[k] for k in fields]
-                    cur.execute(insert_statement, vals)
-
-            conn.commit()
-
-            # Can we make an efficient date index with sqlite?
-            _ = cur.execute(
-                '''
-                CREATE INDEX WRS_INDEX ON landsat (WRS_ROW, WRS_PATH);
-                ''')
-
-            conn.commit()
-        finally:
-            conn.close()
-    return sql_fpath
-
-
-lc_conn = None
-
-
-def _global_lc_connect(sql_fpath):
-    # hack to not reconnect each time
-    global lc_conn
-    import sqlite3
-    if lc_conn is None:
-        conn = sqlite3.connect(sql_fpath)
-        lc_conn = conn
-    return lc_conn
+def ensure_landsat_sqlite_conn(collection_file):
+    tablename = 'landsat'
+    fields = ['SCENE_ID', 'SENSOR_ID', 'PRODUCT_ID', 'BASE_URL',
+              'DATE_ACQUIRED', 'WRS_PATH', 'WRS_ROW', 'CLOUD_COVER']
+    index_cols = ['WRS_ROW', 'WRS_PATH']
+    table_create_cmd = ub.codeblock(
+        '''
+        CREATE TABLE landsat (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            SCENE_ID TEXT NOT NULL,
+            SENSOR_ID TEXT NOT NULL,
+            PRODUCT_ID TEXT NOT NULL,
+            BASE_URL TEXT NOT NULL,
+            DATE_ACQUIRED TEXT NOT NULL,
+            WRS_PATH INTEGER NOT NULL,
+            WRS_ROW INTEGER NOT NULL,
+            CLOUD_COVER REAL NOT NULL
+        );
+        ''')
+    conn = ensure_sqlite_csv_conn(
+        collection_file, fields, table_create_cmd, tablename,
+        index_cols=index_cols, overwrite=False)
+    return conn
 
 
 def query_landsat_with_sqlite(collection_file, cc_limit, date_start, date_end,
                               wr2path, wr2row, sensor, latest=False):
     # import sqlite3
     import dateutil
-    sql_fpath = ensure_landsat_sqlite_cache(collection_file)
-
-    # conn = sqlite3.connect(sql_fpath)
-    conn = _global_lc_connect(sql_fpath)
+    conn = ensure_landsat_sqlite_conn(collection_file)
 
     try:
         cur = conn.cursor()
-
-        # EXPLAIN QUERY PLAN
         result = cur.execute(
             '''
             SELECT BASE_URL, CLOUD_COVER, DATE_ACQUIRED from landsat WHERE
@@ -128,8 +80,7 @@ def query_landsat_with_sqlite(collection_file, cc_limit, date_start, date_end,
             cc_values.append(found[1])
             all_acqdates.append(dateutil.parser.isoparse(found[2]))
     finally:
-        # conn.close()
-        pass
+        cur.close()
 
     if latest and all_urls:
         return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
@@ -146,6 +97,7 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
         >>> from fels.landsat import *  # NOQA
         >>> from fels.utils import convert_wkt_to_scene
         >>> import dateutil
+        >>> import json
         >>> collection_file = ensure_landsat_metadata()
         >>> cc_limit = 100
         >>> date_start = dateutil.parser.isoparse('2016-03-14')
@@ -164,9 +116,16 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
         >>> wr2row = scene[3:6]
         >>> sensor = 'OLI_TIRS'
         >>> latest = False
-        >>> query_landsat_catalogue(collection_file, cc_limit, date_start,
+        >>> results = query_landsat_catalogue(collection_file, cc_limit, date_start,
         >>>                         date_end, wr2path, wr2row, sensor,
         >>>                         latest, use_sql=True)
+        >>> print('results = {!r}'.format(results))
+        >>> date_start = dateutil.parser.isoparse('2010-01-01')
+        >>> date_end = dateutil.parser.isoparse('2020-01-01')
+        >>> results = query_landsat_catalogue(collection_file, cc_limit, date_start,
+        >>>                         date_end, wr2path, wr2row, sensor,
+        >>>                         latest, use_sql=True)
+        >>> print('results = {!r}'.format(results))
         >>> if 0:
         >>>     # Very slow
         >>>     query_landsat_catalogue(collection_file, cc_limit, date_start,

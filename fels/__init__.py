@@ -18,6 +18,10 @@ __dev__ = """
 # Command to autogenerate this init file
 mkinit -m fels --relative -w
 """
+
+__version__ = '1.4.0'
+
+
 from . import fels
 from . import landsat
 from . import sentinel2

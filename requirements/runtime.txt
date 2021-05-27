@@ -1,0 +1,6 @@
+numpy
+requests
+shapely
+geopandas
+ubelt
+dateutils

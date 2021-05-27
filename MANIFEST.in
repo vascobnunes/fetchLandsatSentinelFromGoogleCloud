@@ -4,3 +4,13 @@ include *.py
 include *.txt
 include *.toml
 include *.ini
+recursive-include fels/data .*shx
+recursive-include fels/data .*shp
+recursive-include fels/data .*sbx
+recursive-include fels/data .*sbn
+recursive-include fels/data .*prj
+recursive-include fels/data .*dbf
+recursive-include fels/data .*cpg
+recursive-include fels/data .*xml
+recursive-include fels/data .*txt
+
