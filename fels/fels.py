@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function
 import argparse
 import datetime
-import dateutil.parser
 import os
 import json
 from fels.landsat import (

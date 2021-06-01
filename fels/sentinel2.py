@@ -57,6 +57,8 @@ def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end,
     try:
         cur = conn.cursor()
 
+        # Note the query times are inclusive as opposed to the exclusive times
+        # detailed in the docs
         result = cur.execute(
             '''
             SELECT BASE_URL, CLOUD_COVER, SENSING_TIME from sentinel2 WHERE
