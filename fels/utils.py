@@ -60,9 +60,10 @@ def sort_url_list(cc_values, all_acqdates, all_urls):
 
 def download_file(url, destination_filename):
     """Function to download files using pycurl lib"""
-    with requests.get(url, stream=True) as r:
-        with open(destination_filename, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
+    ub.download(url, fpath=destination_filename)
+    # with requests.get(url, stream=True) as r:
+    #     with open(destination_filename, 'wb') as f:
+    #         shutil.copyfileobj(r.raw, f)
 
 
 def convert_wkt_to_scene(sat, geometry, include_overlap):
