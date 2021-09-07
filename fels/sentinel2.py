@@ -11,17 +11,11 @@ from tempfile import NamedTemporaryFile
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
-    from urllib2 import URLError
 except ImportError:
-    from urllib.request import urlopen, HTTPError, URLError
-try:
-    from osgeo import gdal
-except ImportError:
-    raise ImportError("""Could not find the GDAL/OGR Python library bindings. Using conda \
-(recommended) use: conda config --add channels conda-forge && conda install gdal""")
+    from urllib.request import urlopen, HTTPError
 
+from fels.utils import sort_url_list, download_file
 
-from fels.utils import *
 
 def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False):
     """Query the Sentinel-2 index catalogue and retrieve urls for the best images found."""
@@ -84,7 +78,7 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
             manifest_lines = manifest_file.read().split()
         for line in manifest_lines:
             if 'href' in line:
-                rel_path = line[line.find('href=".')+7:]
+                rel_path = line[line.find('href=".') + 7:]
                 rel_path = rel_path[:rel_path.find('"')]
                 abs_path = os.path.join(target_path, *rel_path.split('/')[1:])
                 if not os.path.exists(os.path.dirname(abs_path)):
@@ -145,6 +139,15 @@ def get_S2_INSPIRE_title(image_inspire_xml):
 
 
 def check_full_tile(image):
+    try:
+        # NOTE: gdal has large import time overhead, and only is used in one
+        # specific case. Executing it as a nested import allows it to be an
+        # optional dependency and decreases the import time from 3.73 seconds
+        # to 0.35 seconds.
+        from osgeo import gdal
+    except ImportError:
+        raise ImportError("""Could not find the GDAL/OGR Python library bindings. Using conda \
+    (recommended) use: conda config --add channels conda-forge && conda install gdal""")
     gdalData = gdal.Open(image)
     if gdalData is None:
         sys.exit("ERROR: can't open raster")
@@ -186,6 +189,8 @@ def is_new(safedir_or_manifest):
     If not, download the manifest.safe first for an equivalent check.
 
     Example:
+        >>> # xdoctest: +SKIP
+        >>> # TODO: need to setup the data for this test
         >>> safedir = 'S2A_MSIL1C_20160106T021717_N0201_R103_T52SDG_20160106T094733.SAFE/'
         >>> manifest = os.path.join(safedir, 'manifest.safe')
         >>> assert is_new(safedir) == False
@@ -201,10 +206,11 @@ def is_new(safedir_or_manifest):
         manifest = safedir_or_manifest
         with open(manifest, 'r') as f:
             lines = f.read().split()
-        return len([l for l in lines if 'MTD_TL.xml' in l]) == 1
+        return len([line for line in lines if 'MTD_TL.xml' in line]) == 1
 
     else:
         raise ValueError(f'{safedir_or_manifest} is not a safedir or manifest')
+
 
 def _dedupe(safedirs, to_return=None):
     '''
@@ -225,7 +231,7 @@ def _dedupe(safedirs, to_return=None):
     '''
     _safedirs = np.array(sorted(safedirs))
     datetimes = [safedir_to_datetime(s) for s in _safedirs]
-    prods = [safedir_to_datetime(s, product=True) for s in _safedirs]
+    # prods = [safedir_to_datetime(s, product=True) for s in _safedirs]
     # first sorted occurrence should be the earliest product discriminator
     _, idxs = np.unique(datetimes, return_index=True)
     if to_return is None:

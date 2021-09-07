@@ -12,8 +12,7 @@ try:
 except ImportError:
     from urllib.request import urlopen, HTTPError, URLError
 
-
-from fels.utils import *
+from fels.utils import sort_url_list
 
 
 def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
@@ -40,6 +39,7 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
     if latest and all_urls:
         return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
     return sort_url_list(cc_values, all_acqdates, all_urls)
+
 
 def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
     """Download a Landsat image file."""
@@ -97,7 +97,7 @@ def landsatdir_to_date(string, processing=False):
         >>> from datetime import date
         >>> s = 'LE07_L1GT_115034_20160707_20161009_01_T2'
         >>> d = landsatdir_to_date(s)
-        >>> assert d == date(2016, 07, 07)
+        >>> assert d == date(2016, 7, 7)
 
     References:
         https://github.com/dgketchum/Landsat578#-1
@@ -108,4 +108,3 @@ def landsatdir_to_date(string, processing=False):
         d_str = string.split('_')[4]  # this is the processing date
     d = list(map(int, [d_str[:4], d_str[4:6], d_str[6:]]))
     return datetime.date(*d)
-

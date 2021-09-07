@@ -5,10 +5,8 @@ import gzip
 import requests
 try:
     from urllib2 import urlopen
-    from urllib2 import HTTPError
-    from urllib2 import URLError
 except ImportError:
-    from urllib.request import urlopen, HTTPError, URLError
+    from urllib.request import urlopen
 
 
 def download_metadata_file(url, outputdir, program):
