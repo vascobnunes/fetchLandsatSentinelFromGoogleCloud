@@ -89,7 +89,6 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
 
     Example:
         >>> from fels.sentinel2 import *  # NOQA
-        >>> collection_file = ensure_sentinel2_metadata()
         >>> from fels import convert_wkt_to_scene
         >>> import dateutil
         >>> import json

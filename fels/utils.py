@@ -102,10 +102,8 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
         ubelt.delete(sql_fpath, verbose=3)
         print('Initial connection to sql_fpath = {!r}'.format(sql_fpath))
         conn = sqlite3.connect(sql_fpath)
-
+        cur = conn.cursor()
         try:
-            cur = conn.cursor()
-
             print('(SQL) >')
             print(table_create_cmd)
             cur.execute(table_create_cmd)
@@ -133,13 +131,67 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 print(create_index_cmd)
                 _ = cur.execute(create_index_cmd)
 
-            print('collection_file = {!r}'.format(collection_file))
-            with open(collection_file) as csvfile:
-                reader = csv.DictReader(csvfile)
-                import tqdm
-                for row in tqdm.tqdm(reader, desc='insert csv rows into sqlite cache', mininterval=3, maxinterval=30):
-                    vals = [row[k] for k in fields]
+            import tqdm
+            print('convert to sqlite collection_file = {!r}'.format(collection_file))
+            with open(collection_file, 'r') as csvfile:
+
+                # Read the total number of bytes in the CSV file
+                csvfile.seek(0, 2)
+                total_nbytes = csvfile.tell()
+
+                # Read the header information
+                csvfile.seek(0)
+                header = csvfile.readline()
+                header_nbytes = csvfile.tell()
+
+                # Approximate the number of lines in the file
+
+                # One iterating through the file doesn't take too long
+                # to get the exact number of rows
+                # num_rows = sum(1 for _ in iter(csvfile))
+
+                # But we can get a really good approximation by just measuring
+                # the first few lines
+                num_lines_to_measure = 100
+                csvfile.seek(0, 2)
+                content_nbytes = total_nbytes - header_nbytes
+                csvfile.seek(header_nbytes)
+                for _ in range(num_lines_to_measure):
+                    csvfile.readline()
+                first_content_bytes = csvfile.tell() - header_nbytes
+                appprox_bytes_per_line = first_content_bytes / num_lines_to_measure
+                approx_num_rows = int(content_nbytes / appprox_bytes_per_line)
+
+                csv_fields = header.strip().split(',')
+                # Select the indexes of the columns we want
+                field_to_idx = {field: idx for idx, field in enumerate(csv_fields)}
+                col_indexes = [field_to_idx[k] for k in fields]
+
+                prog = tqdm.tqdm(
+                    iter(csvfile),
+                    desc='insert csv rows into sqlite cache',
+                    total=approx_num_rows, mininterval=1, maxinterval=15,
+                    position=0, leave=True,
+                )
+                # Note: Manual iteration is 1.5x faster than DictReader
+                # 143,416.34it/s
+                for line in prog:
+                    cols = line[:-1].split(',')
+                    # Select the values to insert into the SQLite database
+                    vals = [cols[idx] for idx in col_indexes]
                     cur.execute(insert_statement, vals)
+
+                # TODO: we can delete this code
+                # verus 95,770.39it/s
+                # csvfile.seek(0)
+                # reader = csv.DictReader(csvfile)
+                # prog = tqdm.tqdm(
+                #     reader, desc='insert csv rows into sqlite cache',
+                #     total=approx_num_rows, mininterval=3, maxinterval=30)
+                # for row in prog:
+                #     vals = [row[k] for k in fields]
+                #     cur.execute(insert_statement, vals)
+
             conn.commit()
         except Exception:
             raise
@@ -147,7 +199,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
             GLOBAL_SQLITE_CONNECTIONS[sql_fpath] = conn
             stamp.renew()
         finally:
-            conn.close()
+            cur.close()
 
     # hack to not reconnect each time
     if sql_fpath in GLOBAL_SQLITE_CONNECTIONS:
