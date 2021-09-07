@@ -3,4 +3,5 @@ requests
 shapely
 geopandas
 ubelt
+tqdm
 dateutils

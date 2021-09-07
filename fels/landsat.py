@@ -5,7 +5,7 @@ import os
 import socket
 import time
 import shutil
-import ubelt as ub
+import ubelt
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -29,7 +29,7 @@ def ensure_landsat_sqlite_conn(collection_file):
     fields = ['SCENE_ID', 'SENSOR_ID', 'PRODUCT_ID', 'BASE_URL',
               'DATE_ACQUIRED', 'WRS_PATH', 'WRS_ROW', 'CLOUD_COVER']
     index_cols = ['WRS_ROW', 'WRS_PATH']
-    table_create_cmd = ub.codeblock(
+    table_create_cmd = ubelt.codeblock(
         '''
         CREATE TABLE landsat (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,12 +51,11 @@ def ensure_landsat_sqlite_conn(collection_file):
 
 def query_landsat_with_sqlite(collection_file, cc_limit, date_start, date_end,
                               wr2path, wr2row, sensor, latest=False):
-    # import sqlite3
     import dateutil
     conn = ensure_landsat_sqlite_conn(collection_file)
+    cur = conn.cursor()
 
     try:
-        cur = conn.cursor()
         result = cur.execute(
             '''
             SELECT BASE_URL, CLOUD_COVER, DATE_ACQUIRED from landsat WHERE
@@ -95,7 +94,7 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
 
     Example:
         >>> from fels.landsat import *  # NOQA
-        >>> from fels.utils import convert_wkt_to_scene
+        >>> from fels import convert_wkt_to_scene
         >>> import dateutil
         >>> import json
         >>> collection_file = ensure_landsat_metadata()
@@ -142,10 +141,9 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
     cc_values = []
     all_urls = []
     all_acqdates = []
-    import ubelt as ub
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in ub.ProgIter(reader, desc='searching'):
+        for row in ubelt.ProgIter(reader, desc='searching'):
             year_acq = int(row['DATE_ACQUIRED'][0:4])
             month_acq = int(row['DATE_ACQUIRED'][5:7])
             day_acq = int(row['DATE_ACQUIRED'][8:10])

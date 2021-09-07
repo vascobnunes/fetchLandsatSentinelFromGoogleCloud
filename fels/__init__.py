@@ -27,18 +27,31 @@ from . import landsat
 from . import sentinel2
 from . import utils
 
-from .fels import (convert_wkt_to_scene, get_parser, main, run_fels,)
-from .landsat import (get_landsat_image, landsatdir_to_date,
-                      query_landsat_catalogue,)
-from .sentinel2 import (check_full_tile, get_S2_INSPIRE_title,
+from .fels import (convert_wkt_to_scene, get_parser, main, normalize_satcode,
+                   run_fels,)
+from .landsat import (LANDSAT_METADATA_URL, ensure_landsat_metadata,
+                      ensure_landsat_sqlite_conn, get_landsat_image,
+                      landsatdir_to_date, query_landsat_catalogue,
+                      query_landsat_with_sqlite,)
+from .sentinel2 import (SENTINEL2_METADATA_URL, check_full_tile,
+                        ensure_sentinel2_metadata,
+                        ensure_sentinel2_sqlite_conn, get_S2_INSPIRE_title,
                         get_S2_image_bands, get_sentinel2_image, is_new,
-                        query_sentinel2_catalogue, safedir_to_datetime,)
-from .utils import (download_file, download_metadata_file, sort_url_list,)
+                        query_sentinel2_catalogue, query_sentinel2_with_sqlite,
+                        safedir_to_datetime,)
+from .utils import (FELS_DEFAULT_OUTPUTDIR, GLOBAL_SQLITE_CONNECTIONS,
+                    download_file, download_metadata_file,
+                    ensure_sqlite_csv_conn, sort_url_list,)
 
-__all__ = ['check_full_tile', 'convert_wkt_to_scene', 'download_file',
-           'download_metadata_file', 'fels', 'get_S2_INSPIRE_title',
+__all__ = ['FELS_DEFAULT_OUTPUTDIR', 'GLOBAL_SQLITE_CONNECTIONS',
+           'LANDSAT_METADATA_URL', 'SENTINEL2_METADATA_URL', 'check_full_tile',
+           'convert_wkt_to_scene', 'download_file', 'download_metadata_file',
+           'ensure_landsat_metadata', 'ensure_landsat_sqlite_conn',
+           'ensure_sentinel2_metadata', 'ensure_sentinel2_sqlite_conn',
+           'ensure_sqlite_csv_conn', 'fels', 'get_S2_INSPIRE_title',
            'get_S2_image_bands', 'get_landsat_image', 'get_parser',
            'get_sentinel2_image', 'is_new', 'landsat', 'landsatdir_to_date',
-           'main', 'query_landsat_catalogue', 'query_sentinel2_catalogue',
-           'run_fels', 'safedir_to_datetime', 'sentinel2', 'sort_url_list',
-           'utils']
+           'main', 'normalize_satcode', 'query_landsat_catalogue',
+           'query_landsat_with_sqlite', 'query_sentinel2_catalogue',
+           'query_sentinel2_with_sqlite', 'run_fels', 'safedir_to_datetime',
+           'sentinel2', 'sort_url_list', 'utils']

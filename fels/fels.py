@@ -2,8 +2,12 @@
 from __future__ import absolute_import, division, print_function
 import argparse
 import datetime
-import os
+import geopandas
 import json
+import os
+import pkg_resources
+import shapely as shp
+import ubelt
 from fels.landsat import (
     get_landsat_image, query_landsat_catalogue, landsatdir_to_date,
     ensure_landsat_metadata)
@@ -11,8 +15,11 @@ from fels.sentinel2 import (
     query_sentinel2_catalogue, get_sentinel2_image, safedir_to_datetime,
     ensure_sentinel2_metadata
 )
-import pkg_resources
-import shapely as shp
+
+
+@ubelt.memoize
+def _memo_geopandas_read(path):
+    return geopandas.read_file(path)
 
 
 def convert_wkt_to_scene(sat, geometry, include_overlap):
@@ -181,8 +188,7 @@ def _get_options(*args, **kwargs):
         >>> options = _get_options(**kwargs)
         >>> print('options = {!r}'.format(options))
         >>> options = _get_options(geometry='POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))')
-        >>> import ubelt as ub
-        >>> print('options.__dict__ = {}'.format(ub.repr2(options.__dict__, nl=1)))
+        >>> print('options.__dict__ = {}'.format(ubelt.repr2(options.__dict__, nl=1)))
     """
     args_names = ['scene', 'sat', 'start_date', 'end_date']
     for key, val in zip(args_names, args):
@@ -257,8 +263,7 @@ def _run_fels(options):
         >>>     'list': True,
         >>> }
         >>> options = _get_options(**kwargs)
-        >>> import ubelt as ub
-        >>> print('options.__dict__ = {}'.format(ub.repr2(options.__dict__, nl=1)))
+        >>> print('options.__dict__ = {}'.format(ubelt.repr2(options.__dict__, nl=1)))
         >>> _run_fels(options)
     '''
 

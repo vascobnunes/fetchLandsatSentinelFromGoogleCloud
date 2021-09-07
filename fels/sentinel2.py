@@ -8,7 +8,7 @@ import glob
 import numpy as np
 import xml.etree.ElementTree as ET
 from tempfile import NamedTemporaryFile
-import ubelt as ub
+import ubelt
 import dateutil
 try:
     from urllib2 import urlopen
@@ -32,7 +32,7 @@ def ensure_sentinel2_sqlite_conn(collection_file):
     tablename = 'sentinel2'
     fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
     index_cols = ['MGRS_TILE']
-    table_create_cmd = ub.codeblock(
+    table_create_cmd = ubelt.codeblock(
         '''
         CREATE TABLE sentinel2 (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,13 +50,8 @@ def ensure_sentinel2_sqlite_conn(collection_file):
 
 def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
     conn = ensure_sentinel2_sqlite_conn(collection_file)
-    # if 0:
-    #     cur = conn.cursor()
-    #     list(cur.execute('SELECT count(*) from sentinel2'))
-
+    cur = conn.cursor()
     try:
-        cur = conn.cursor()
-
         # Note the query times are inclusive as opposed to the exclusive times
         # detailed in the docs
         result = cur.execute(
@@ -95,7 +90,7 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
     Example:
         >>> from fels.sentinel2 import *  # NOQA
         >>> collection_file = ensure_sentinel2_metadata()
-        >>> from fels.utils import convert_wkt_to_scene
+        >>> from fels import convert_wkt_to_scene
         >>> import dateutil
         >>> import json
         >>> collection_file = ensure_sentinel2_metadata()
@@ -124,7 +119,6 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
         >>> print(results[-1])
         >>> print('results = {!r}'.format(len(results)))
     """
-    import ubelt as ub
     print("Searching for Sentinel-2 images in catalog...")
     if use_sql:
         # hack for faster query
@@ -136,7 +130,7 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
     all_acqdates = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in ub.ProgIter(reader, desc='searching S2'):
+        for row in ubelt.ProgIter(reader, desc='searching S2'):
             year_acq = int(row['SENSING_TIME'][0:4])
             month_acq = int(row['SENSING_TIME'][5:7])
             day_acq = int(row['SENSING_TIME'][8:10])

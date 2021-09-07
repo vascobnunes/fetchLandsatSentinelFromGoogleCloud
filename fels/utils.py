@@ -1,21 +1,20 @@
 from __future__ import absolute_import, division, print_function
 import os
 import shutil
-import gzip
 import atexit
-import ubelt as ub
 import csv
+import gzip
 import sqlite3
-try:
-    from urllib2 import urlopen
-except ImportError:
-    from urllib.request import urlopen
-import geopandas
+import ubelt
+# try:
+#     from urllib2 import urlopen
+# except ImportError:
+#     from urllib.request import urlopen
 
 
 FELS_DEFAULT_OUTPUTDIR = os.environ.get('FELS_DEFAULT_OUTPUTDIR', '')
 if not FELS_DEFAULT_OUTPUTDIR:
-    FELS_DEFAULT_OUTPUTDIR = ub.get_app_cache_dir('fels')
+    FELS_DEFAULT_OUTPUTDIR = ubelt.get_app_cache_dir('fels')
     # FELS_DEFAULT_OUTPUTDIR = os.path.expanduser('~/data/fels')
 
 
@@ -31,7 +30,7 @@ def download_metadata_file(url, outputdir, program):
         print('url = {!r}'.format(url))
         print('outputdir = {!r}'.format(outputdir))
         print('program = {!r}'.format(program))
-        ub.download(url, fpath=zipped_index_path)
+        ubelt.download(url, fpath=zipped_index_path, chunksize=int(2 ** 22))
         # content = urlopen(url)
         # with open(zipped_index_path, 'wb') as f:
         #     shutil.copyfileobj(content, f)
@@ -56,15 +55,10 @@ def sort_url_list(cc_values, all_acqdates, all_urls):
 
 def download_file(url, destination_filename):
     """Function to download files using pycurl lib"""
-    ub.download(url, fpath=destination_filename)
+    ubelt.download(url, fpath=destination_filename)
     # with requests.get(url, stream=True) as r:
     #     with open(destination_filename, 'wb') as f:
     #         shutil.copyfileobj(r.raw, f)
-
-
-@ub.memoize
-def _memo_geopandas_read(path):
-    return geopandas.read_file(path)
 
 
 GLOBAL_SQLITE_CONNECTIONS = {}
@@ -76,7 +70,6 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
     """
     Returns a connection to a cache of a csv file
     """
-    import ubelt as ub
     sql_fpath = collection_file + '.v001.sqlite'
     overwrite = False
     if os.path.exists(sql_fpath):
@@ -91,10 +84,10 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
     else:
         overwrite = True
 
-    stamp_dpath = ub.ensuredir((os.path.dirname(collection_file), '.stamps'))
+    stamp_dpath = ubelt.ensuredir((os.path.dirname(collection_file), '.stamps'))
     base_name = os.path.basename(collection_file)
 
-    stamp = ub.CacheStamp(base_name, dpath=stamp_dpath, depends=[
+    stamp = ubelt.CacheStamp(base_name, dpath=stamp_dpath, depends=[
         fields, table_create_cmd, tablename],
         # product=[sql_fpath],
         verbose=3
@@ -106,7 +99,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
         # Update the SQL cache if the CSV file was modified.
         print('Computing (or recomputing) an sql cache')
 
-        ub.delete(sql_fpath, verbose=3)
+        ubelt.delete(sql_fpath, verbose=3)
         print('Initial connection to sql_fpath = {!r}'.format(sql_fpath))
         conn = sqlite3.connect(sql_fpath)
 
@@ -119,7 +112,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
 
             keypart = ','.join(fields)
             valpart = ','.join('?' * len(fields))
-            insert_statement = ub.codeblock(
+            insert_statement = ubelt.codeblock(
                 '''
                 INSERT INTO {tablename}({keypart})
                 VALUES({valpart})
@@ -130,7 +123,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 index_cols_str = ', '.join(index_cols)
                 indexname = 'noname_index'
                 # Can we make an efficient date index with sqlite?
-                create_index_cmd = ub.codeblock(
+                create_index_cmd = ubelt.codeblock(
                     '''
                     CREATE INDEX {indexname} ON {tablename} ({index_cols_str});
                     ''').format(
@@ -143,9 +136,8 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
             print('collection_file = {!r}'.format(collection_file))
             with open(collection_file) as csvfile:
                 reader = csv.DictReader(csvfile)
-                for row in ub.ProgIter(reader,
-                                       desc='insert csv rows into sqlite cache',
-                                       freq=10000, adjust=False):
+                import tqdm
+                for row in tqdm.tqdm(reader, desc='insert csv rows into sqlite cache', mininterval=3, maxinterval=30):
                     vals = [row[k] for k in fields]
                     cur.execute(insert_statement, vals)
             conn.commit()
