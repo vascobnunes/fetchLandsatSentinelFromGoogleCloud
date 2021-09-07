@@ -3,9 +3,6 @@ import os
 import shutil
 import gzip
 import atexit
-import json
-import requests
-import pkg_resources
 import ubelt as ub
 import csv
 import sqlite3
@@ -14,7 +11,6 @@ try:
 except ImportError:
     from urllib.request import urlopen
 import geopandas
-import shapely as shp
 
 
 FELS_DEFAULT_OUTPUTDIR = os.environ.get('FELS_DEFAULT_OUTPUTDIR', '')
@@ -64,69 +60,6 @@ def download_file(url, destination_filename):
     # with requests.get(url, stream=True) as r:
     #     with open(destination_filename, 'wb') as f:
     #         shutil.copyfileobj(r.raw, f)
-
-
-def convert_wkt_to_scene(sat, geometry, include_overlap):
-    '''
-    Args:
-        sat: 'S2', 'ETM', 'OLI_TIRS'
-        geometry: WKT or GeoJSON string
-        include_overlap: if True, use predicate 'intersects', else use predicate 'contains'
-
-    Returns:
-        List of scenes containing the geometry
-
-    Example:
-        >>> sat = 'S2'
-        >>> geometry = json.dumps({
-        >>>     'type': 'Polygon', 'coordinates': [[
-        >>>         [40.4700, -74.2700],
-        >>>         [41.3100, -74.2700],
-        >>>         [41.3100, -71.7500],
-        >>>         [40.4700, -71.7500],
-        >>>         [40.4700, -74.2700],
-        >>>     ]]})
-        >>> include_overlap = True
-        >>> convert_wkt_to_scene('S2', geometry, include_overlap)
-        >>> convert_wkt_to_scene('LC', geometry, include_overlap)
-    '''
-
-    if sat == 'S2':
-        path = pkg_resources.resource_filename(__name__, os.path.join('data', 'sentinel_2_index_shapefile.shp'))
-    else:
-        path = pkg_resources.resource_filename(__name__, os.path.join('data', 'WRS2_descending.shp'))
-
-    if isinstance(geometry, dict):
-        feat = shp.geometry.shape(geometry)
-    elif isinstance(geometry, str):
-        try:
-            feat = shp.geometry.shape(json.loads(geometry))
-        except json.JSONDecodeError:
-            feat = shp.wkt.loads(geometry)
-    else:
-        raise TypeError(type(geometry))
-
-    # gdf = geopandas.read_file(path)
-    gdf = _memo_geopandas_read(path)
-
-    if include_overlap:
-        # TODO paramatarize thresh
-        thresh = 0.0
-        if thresh > 0:
-            # Requires some minimum overlap
-            overlap = gdf.geometry.intersection(feat).area / feat.area
-            found = gdf[overlap > thresh]
-        else:
-            # Any amount of overlap is ok
-            found = gdf[gdf.geometry.intersects(feat)]
-    else:
-        # This is the bottleneck when the downloaded data exists
-        found = gdf[gdf.geometry.contains(feat)]
-
-    if sat == 'S2':
-        return found.Name.values
-    else:
-        return found.WRSPR.values
 
 
 @ub.memoize
