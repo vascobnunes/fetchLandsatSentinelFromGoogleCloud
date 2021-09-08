@@ -4,6 +4,10 @@ Find and download Landsat and Sentinel-2 data from the public Google Cloud
 
 For more info see the
 `FeLS GitHub Page <https://github.com/vascobnunes/fetchLandsatSentinelFromGoogleCloud>`_
+
+For command line use see :func:`main`.
+
+For programatic use see :func:`run_fels`.
 """
 from __future__ import absolute_import, division, print_function
 import argparse
@@ -38,9 +42,10 @@ def convert_wkt_to_scene(sat, geometry, include_overlap, thresh=0.0):
             region.
 
     Returns:
-        List of scenes containing the geometry
+        List[str]: List of scenes containing the geometry
 
     Example:
+        >>> from fels.fels import *  # NOQA
         >>> sat = 'S2'
         >>> geometry = json.dumps({
         >>>     'type': 'Polygon', 'coordinates': [[
@@ -51,8 +56,10 @@ def convert_wkt_to_scene(sat, geometry, include_overlap, thresh=0.0):
         >>>         [40.4700, -74.2700],
         >>>     ]]})
         >>> include_overlap = True
-        >>> convert_wkt_to_scene('S2', geometry, include_overlap)
-        >>> convert_wkt_to_scene('LC', geometry, include_overlap)
+        >>> sorted(convert_wkt_to_scene('S2', geometry, include_overlap))
+        ['37CET', '37CEU', '37CEV', '37DEA']
+        >>> sorted(convert_wkt_to_scene('LC', geometry, include_overlap))
+        ['140113', '141112', '141113', ...
     """
 
     if sat == 'S2':
@@ -86,9 +93,9 @@ def convert_wkt_to_scene(sat, geometry, include_overlap, thresh=0.0):
         found = gdf[gdf.geometry.contains(feat)]
 
     if sat == 'S2':
-        return found.Name.values
+        return found.Name.values.tolist()
     else:
-        return found.WRSPR.values
+        return found.WRSPR.values.tolist()
 
 
 def normalize_satcode(sat):
@@ -117,8 +124,8 @@ def get_parser():
     )
     parser.add_argument('scene', nargs='?', help='WRS2 coordinates for Landsat (ex 198030) or MGRS for S2 (ex 52SDG). Mutually exclusive with --geometry', default=None)
     parser.add_argument('sat', help='Which satellite are you looking for', choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], type=normalize_satcode, default='S2')
-    parser.add_argument('start_date', help='Start date, in format YYYY-MM-DD. Left-exclusive.', default=('2010-01-01'))
-    parser.add_argument('end_date', help='End date, in format YYYY-MM-DD. Right-exclusive.', default=('2020-01-01'))
+    parser.add_argument('start_date', help='Start date, in format YYYY-MM-DD. Note: Changed in 1.4.0 to be Left-inclusive in sqlite mode, but still Left-exclusive if use_csv.', default=('2010-01-01'))
+    parser.add_argument('end_date', help='End date, in format YYYY-MM-DD. Note: Changed in 1.4.0 to be Right-inclusive in sqlite mode, but still Right-exclusive if use_csv.', default=('2020-01-01'))
     parser.add_argument('-g', '--geometry', help='Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.', default=None)
     parser.add_argument('-i', '--includeoverlap', help='If -g is used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
     parser.add_argument('--minoverlap', help='If -i is not used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
@@ -133,6 +140,7 @@ def get_parser():
     parser.add_argument('-d', '--dates', help='List or return dates instead of download urls', action='store_true', default=False)
     parser.add_argument('-r', '--reject_old', help='For S2, skip redundant old-format (before Nov 2016) images', action='store_true', default=False)
     parser.add_argument('-t', '--thresh', help='Only select intersecting areas where the fraction of the tile that overlaps with the spatial region is greater than this threshol', default=0.0)
+    parser.add_argument('--use_csv', action='store_true', dest='use_csv', help='use the direct csv query instead of sqlite3 (only useful if you are doing 1 query for the first time)')
     parser.add_argument('--version', action='version', version='{version}'.format(**version_info))
     return parser
 
@@ -295,7 +303,7 @@ def _run_fels(options):
             url = query_sentinel2_catalogue(
                 sentinel2_metadata_file, options.cloudcover,
                 options.start_date, options.end_date, scene, options.latest,
-                use_sql=True)
+                use_csv=options.use_csv)
             if not url:
                 print('No image was found with the criteria you chose! Please review your parameters and try again.')
             else:
@@ -319,7 +327,7 @@ def _run_fels(options):
             url = query_landsat_catalogue(
                 landsat_metadata_file, options.cloudcover, options.start_date,
                 options.end_date, scene[0:3], scene[3:6], options.sat,
-                options.latest, use_sql=True)
+                options.latest, use_csv=options.use_csv)
 
             if not url:
                 print('No image was found with the criteria you chose! Please review your parameters and try again.')

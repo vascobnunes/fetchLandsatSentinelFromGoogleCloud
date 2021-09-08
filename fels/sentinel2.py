@@ -28,32 +28,83 @@ def ensure_sentinel2_metadata(outputdir=None):
     return download_metadata_file(SENTINEL2_METADATA_URL, outputdir, 'Sentinel')
 
 
-def ensure_sentinel2_sqlite_conn(collection_file):
-    tablename = 'sentinel2'
-    fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
-    index_cols = ['MGRS_TILE']
-    table_create_cmd = ubelt.codeblock(
-        '''
-        CREATE TABLE sentinel2 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            SENSING_TIME TEXT NOT NULL,
-            MGRS_TILE TEXT NOT NULL,
-            BASE_URL TEXT NOT NULL,
-            CLOUD_COVER REAL NOT NULL
-        );
-        ''')
-    conn = ensure_sqlite_csv_conn(
-        collection_file, fields, table_create_cmd, tablename,
-        index_cols=index_cols, overwrite=False)
-    return conn
+def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False, use_csv=False):
+    """
+    Query the Sentinel-2 index catalogue and retrieve urls for the best images
+    found.
+
+    Example:
+        >>> from fels.sentinel2 import *  # NOQA
+        >>> from fels import convert_wkt_to_scene
+        >>> import dateutil
+        >>> import json
+        >>> collection_file = ensure_sentinel2_metadata()
+        >>> cc_limit = 100
+        >>> date_start = dateutil.parser.isoparse('2016-10-15')
+        >>> date_end = dateutil.parser.isoparse('2016-10-30')
+        >>> geometry = json.dumps({
+        >>>     'type': 'Polygon', 'coordinates': [[
+        >>>         [40.4700, -74.2700],
+        >>>         [41.3100, -74.2700],
+        >>>         [41.3100, -71.7500],
+        >>>         [40.4700, -71.7500],
+        >>>         [40.4700, -74.2700],
+        >>>     ]]})
+        >>> scenes = convert_wkt_to_scene('S2', geometry, True)
+        >>> tile = scenes[0]
+        >>> latest = False
+        >>> query_sentinel2_catalogue(collection_file, cc_limit, date_start,
+        >>>                         date_end, tile, latest, use_csv=0)
+        >>> date_start = dateutil.parser.isoparse('2010-01-01')
+        >>> date_end = dateutil.parser.isoparse('2020-01-01')
+        >>> results = query_sentinel2_catalogue(collection_file, cc_limit, date_start,
+        >>>                         date_end, tile, latest, use_csv=0)
+        >>> print(results[0])
+        >>> print(results[len(results) // 2])
+        >>> print(results[-1])
+        >>> print('results = {!r}'.format(len(results)))
+    """
+    print('Searching for Sentinel-2 images in catalog...')
+    if use_csv:
+        return _query_sentinel2_with_csv(collection_file, cc_limit, date_start,
+                                         date_end, tile, latest=latest)
+    else:
+        # Generally SQL is faster
+        return _query_sentinel2_with_sqlite(collection_file, cc_limit,
+                                            date_start, date_end, tile,
+                                            latest=latest)
 
 
-def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
-    conn = ensure_sentinel2_sqlite_conn(collection_file)
+def _query_sentinel2_with_csv(collection_file, cc_limit, date_start, date_end,
+                              tile, latest=False):
+    cc_values = []
+    all_urls = []
+    all_acqdates = []
+    with open(collection_file) as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in ubelt.ProgIter(reader, desc='searching S2'):
+            year_acq = int(row['SENSING_TIME'][0:4])
+            month_acq = int(row['SENSING_TIME'][5:7])
+            day_acq = int(row['SENSING_TIME'][8:10])
+            acqdate = datetime.datetime(year_acq, month_acq, day_acq)
+            if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit \
+                    and date_start < acqdate < date_end:
+                # print('row = {!r}'.format(row))
+                all_urls.append(row['BASE_URL'])
+                cc_values.append(float(row['CLOUD_COVER']))
+                all_acqdates.append(acqdate)
+
+    if latest and all_urls:
+        return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
+    return sort_url_list(cc_values, all_acqdates, all_urls)
+
+
+def _query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end, tile, latest=False):
+    conn = _ensure_sentinel2_sqlite_conn(collection_file)
     cur = conn.cursor()
     try:
-        # Note the query times are inclusive as opposed to the exclusive times
-        # detailed in the docs
+        # FIXME: the query times are inclusive as opposed to the exclusive
+        # times detailed in the docs
         result = cur.execute(
             '''
             SELECT BASE_URL, CLOUD_COVER, SENSING_TIME from sentinel2 WHERE
@@ -82,75 +133,24 @@ def query_sentinel2_with_sqlite(collection_file, cc_limit, date_start, date_end,
     return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
-def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, tile, latest=False, use_sql=True):
-    """
-    Query the Sentinel-2 index catalogue and retrieve urls for the best images
-    found.
-
-    Example:
-        >>> from fels.sentinel2 import *  # NOQA
-        >>> from fels import convert_wkt_to_scene
-        >>> import dateutil
-        >>> import json
-        >>> collection_file = ensure_sentinel2_metadata()
-        >>> cc_limit = 100
-        >>> date_start = dateutil.parser.isoparse('2016-10-15')
-        >>> date_end = dateutil.parser.isoparse('2016-10-30')
-        >>> geometry = json.dumps({
-        >>>     'type': 'Polygon', 'coordinates': [[
-        >>>         [40.4700, -74.2700],
-        >>>         [41.3100, -74.2700],
-        >>>         [41.3100, -71.7500],
-        >>>         [40.4700, -71.7500],
-        >>>         [40.4700, -74.2700],
-        >>>     ]]})
-        >>> scenes = convert_wkt_to_scene('S2', geometry, True)
-        >>> tile = scenes[0]
-        >>> latest = False
-        >>> query_sentinel2_catalogue(collection_file, cc_limit, date_start,
-        >>>                         date_end, tile, latest, use_sql=True)
-        >>> date_start = dateutil.parser.isoparse('2010-01-01')
-        >>> date_end = dateutil.parser.isoparse('2020-01-01')
-        >>> results = query_sentinel2_catalogue(collection_file, cc_limit, date_start,
-        >>>                         date_end, tile, latest, use_sql=True)
-        >>> print(results[0])
-        >>> print(results[len(results) // 2])
-        >>> print(results[-1])
-        >>> print('results = {!r}'.format(len(results)))
-    """
-    print('Searching for Sentinel-2 images in catalog...')
-    if use_sql:
-        # Generally SQL is faster
-        return query_sentinel2_with_sqlite(collection_file, cc_limit,
-                                           date_start, date_end, tile,
-                                           latest=latest)
-    else:
-        return query_sentinel2_with_csv(collection_file, cc_limit, date_start,
-                                        date_end, tile, latest=latest)
-
-
-def query_sentinel2_with_csv(collection_file, cc_limit, date_start, date_end,
-                             tile, latest=False):
-    cc_values = []
-    all_urls = []
-    all_acqdates = []
-    with open(collection_file) as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in ubelt.ProgIter(reader, desc='searching S2'):
-            year_acq = int(row['SENSING_TIME'][0:4])
-            month_acq = int(row['SENSING_TIME'][5:7])
-            day_acq = int(row['SENSING_TIME'][8:10])
-            acqdate = datetime.datetime(year_acq, month_acq, day_acq)
-            if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit \
-                    and date_start < acqdate < date_end:
-                # print('row = {!r}'.format(row))
-                all_urls.append(row['BASE_URL'])
-                cc_values.append(float(row['CLOUD_COVER']))
-                all_acqdates.append(acqdate)
-
-    if latest and all_urls:
-        return [sort_url_list(cc_values, all_acqdates, all_urls).pop()]
-    return sort_url_list(cc_values, all_acqdates, all_urls)
+def _ensure_sentinel2_sqlite_conn(collection_file):
+    tablename = 'sentinel2'
+    fields = ['SENSING_TIME', 'CLOUD_COVER', 'BASE_URL', 'MGRS_TILE']
+    index_cols = ['MGRS_TILE']
+    table_create_cmd = ubelt.codeblock(
+        '''
+        CREATE TABLE sentinel2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            SENSING_TIME TEXT NOT NULL,
+            MGRS_TILE TEXT NOT NULL,
+            BASE_URL TEXT NOT NULL,
+            CLOUD_COVER REAL NOT NULL
+        );
+        ''')
+    conn = ensure_sqlite_csv_conn(
+        collection_file, fields, table_create_cmd, tablename,
+        index_cols=index_cols, overwrite=False)
+    return conn
 
 
 def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspire=False, reject_old=False):
