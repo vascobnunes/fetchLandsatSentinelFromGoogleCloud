@@ -77,7 +77,6 @@ def convert_wkt_to_scene(sat, geometry, include_overlap, thresh=0.0):
     else:
         raise TypeError(type(geometry))
 
-    # gdf = geopandas.read_file(path)
     gdf = _memo_geopandas_read(path)
 
     if include_overlap:

@@ -28,7 +28,6 @@ def download_metadata_file(url, outputdir, program):
         print('Downloading Metadata file...')
         print('url = {!r}'.format(url))
         print('outputdir = {!r}'.format(outputdir))
-        print('program = {!r}'.format(program))
         ubelt.download(url, fpath=zipped_index_path, chunksize=int(2 ** 22))
     index_path = os.path.join(outputdir, 'index_' + program + '.csv')
     if not os.path.isfile(index_path):
