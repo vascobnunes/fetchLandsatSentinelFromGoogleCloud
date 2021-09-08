@@ -89,7 +89,6 @@ def _query_sentinel2_with_csv(collection_file, cc_limit, date_start, date_end,
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit \
                     and date_start < acqdate < date_end:
-                # print('row = {!r}'.format(row))
                 all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)
