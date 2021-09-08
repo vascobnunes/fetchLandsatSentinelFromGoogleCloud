@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 import csv
 import datetime
@@ -6,6 +7,7 @@ import socket
 import time
 import shutil
 import ubelt
+import dateutil
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -51,7 +53,6 @@ def ensure_landsat_sqlite_conn(collection_file):
 
 def query_landsat_with_sqlite(collection_file, cc_limit, date_start, date_end,
                               wr2path, wr2row, sensor, latest=False):
-    import dateutil
     conn = ensure_landsat_sqlite_conn(collection_file)
     cur = conn.cursor()
 
@@ -131,7 +132,7 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
         >>>                             date_end, wr2path, wr2row, sensor,
         >>>                             latest, use_sql=False)
     """
-    print("Searching for Landsat-{} images in catalog...".format(sensor))
+    print('Searching for Landsat-{} images in catalog...'.format(sensor))
     if use_sql:
         # hack for faster query
         return query_landsat_with_sqlite(
@@ -160,18 +161,18 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
     return sort_url_list(cc_values, all_acqdates, all_urls)
 
 
-def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
+def get_landsat_image(url, outputdir, overwrite=False, sat='TM'):
     """Download a Landsat image file."""
     img = os.path.basename(url)
-    if sat == "TM":
+    if sat == 'TM':
         possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
                           'B6.TIF', 'B7.TIF', 'GCP.txt', 'VER.txt', 'VER.jpg',
                           'ANG.txt', 'BQA.TIF', 'MTL.txt']
-    elif sat == "OLI_TIRS":
+    elif sat == 'OLI_TIRS':
         possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
                           'B6.TIF', 'B7.TIF', 'B8.TIF', 'B9.TIF', 'B10.TIF',
-                          "B11.TIF", 'ANG.txt', 'BQA.TIF', 'MTL.txt']
-    elif sat == "ETM":
+                          'B11.TIF', 'ANG.txt', 'BQA.TIF', 'MTL.txt']
+    elif sat == 'ETM':
         possible_bands = ['B1.TIF', 'B2.TIF', 'B3.TIF', 'B4.TIF', 'B5.TIF',
                           'B6_VCID_1.TIF', 'B6_VCID_2.TIF', 'B7.TIF',
                           'B8.TIF', 'ANG.txt', 'BQA.TIF', 'MTL.txt']
@@ -184,18 +185,18 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
 
     os.makedirs(target_path, exist_ok=True)
     for band in possible_bands:
-        complete_url = url + "/" + img + "_" + band
-        target_file = os.path.join(target_path, img + "_" + band)
+        complete_url = url + '/' + img + '_' + band
+        target_file = os.path.join(target_path, img + '_' + band)
         if os.path.exists(target_file) and not overwrite:
-            print(target_file, "exists and --overwrite option was not used. Skipping image download")
+            print(target_file, 'exists and --overwrite option was not used. Skipping image download')
             continue
         try:
             content = urlopen(complete_url, timeout=600)
         except HTTPError:
-            print("Could not find", band, "band image file.")
+            print('Could not find', band, 'band image file.')
             continue
         except URLError:
-            print("Timeout, Restart=======>")
+            print('Timeout, Restart=======>')
             time.sleep(10)
             get_landsat_image(url, outputdir, overwrite, sat)
             return
@@ -203,15 +204,15 @@ def get_landsat_image(url, outputdir, overwrite=False, sat="TM"):
             try:
                 shutil.copyfileobj(content, f)
             except socket.timeout:
-                print("Socket Timeout, Restart=======>")
+                print('Socket Timeout, Restart=======>')
                 time.sleep(10)
                 get_landsat_image(url, outputdir, overwrite, sat)
                 return
-            print("Downloaded", target_file)
+            print('Downloaded', target_file)
 
 
 def landsatdir_to_date(string, processing=False):
-    '''
+    """
     Example:
         >>> from datetime import date
         >>> s = 'LE07_L1GT_115034_20160707_20161009_01_T2'
@@ -220,7 +221,7 @@ def landsatdir_to_date(string, processing=False):
 
     References:
         https://github.com/dgketchum/Landsat578#-1
-    '''
+    """
     if not processing:
         d_str = string.split('_')[3]  # this is the acquisition date
     else:

@@ -1,21 +1,20 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
+import atexit
+import gzip
 import os
 import shutil
-import atexit
-import csv
-import gzip
 import sqlite3
 import ubelt
-# try:
-#     from urllib2 import urlopen
-# except ImportError:
-#     from urllib.request import urlopen
 
 
+# Set the default output dir to the XDG or System cache dir
+# i.e. ~/.cache/fels $XDG_DATA_HOME/fels %APPDATA%/fels or ~/Library/Caches/fels
 FELS_DEFAULT_OUTPUTDIR = os.environ.get('FELS_DEFAULT_OUTPUTDIR', '')
 if not FELS_DEFAULT_OUTPUTDIR:
     FELS_DEFAULT_OUTPUTDIR = ubelt.get_app_cache_dir('fels')
-    # FELS_DEFAULT_OUTPUTDIR = os.path.expanduser('~/data/fels')
+
+GLOBAL_SQLITE_CONNECTIONS = {}
 
 
 def download_metadata_file(url, outputdir, program):
@@ -26,17 +25,14 @@ def download_metadata_file(url, outputdir, program):
     if not os.path.isfile(zipped_index_path):
         if not os.path.exists(os.path.dirname(zipped_index_path)):
             os.makedirs(os.path.dirname(zipped_index_path))
-        print("Downloading Metadata file...")
+        print('Downloading Metadata file...')
         print('url = {!r}'.format(url))
         print('outputdir = {!r}'.format(outputdir))
         print('program = {!r}'.format(program))
         ubelt.download(url, fpath=zipped_index_path, chunksize=int(2 ** 22))
-        # content = urlopen(url)
-        # with open(zipped_index_path, 'wb') as f:
-        #     shutil.copyfileobj(content, f)
     index_path = os.path.join(outputdir, 'index_' + program + '.csv')
     if not os.path.isfile(index_path):
-        print("Unzipping Metadata file...")
+        print('Unzipping Metadata file...')
         with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as f:
             shutil.copyfileobj(gzip_index, f)
     return index_path
@@ -53,17 +49,6 @@ def sort_url_list(cc_values, all_acqdates, all_urls):
     return urls
 
 
-def download_file(url, destination_filename):
-    """Function to download files using pycurl lib"""
-    ubelt.download(url, fpath=destination_filename)
-    # with requests.get(url, stream=True) as r:
-    #     with open(destination_filename, 'wb') as f:
-    #         shutil.copyfileobj(r.raw, f)
-
-
-GLOBAL_SQLITE_CONNECTIONS = {}
-
-
 def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                            tablename='unnamed_table1', index_cols=[],
                            overwrite=False):
@@ -75,9 +60,6 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
     if os.path.exists(sql_fpath):
         sql_stat = os.stat(sql_fpath)
         col_stat = os.stat(collection_file)
-        if 1:
-            print('col_stat = {!r}'.format(col_stat))
-            print('sql_stat = {!r}'.format(sql_stat))
         # CSV file has a newer modified time, we have to update
         if col_stat.st_mtime > sql_stat.st_mtime:
             overwrite = True
@@ -88,9 +70,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
     base_name = os.path.basename(collection_file)
 
     stamp = ubelt.CacheStamp(base_name, dpath=stamp_dpath, depends=[
-        fields, table_create_cmd, tablename],
-        # product=[sql_fpath],
-        verbose=3
+        fields, table_create_cmd, tablename], verbose=3
     )
     if stamp.expired():
         overwrite = True
@@ -120,7 +100,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
             if index_cols:
                 index_cols_str = ', '.join(index_cols)
                 indexname = 'noname_index'
-                # Can we make an efficient date index with sqlite?
+                # TODO: Can we make an efficient date index with sqlite?
                 create_index_cmd = ubelt.codeblock(
                     '''
                     CREATE INDEX {indexname} ON {tablename} ({index_cols_str});
@@ -145,13 +125,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 header_nbytes = csvfile.tell()
 
                 # Approximate the number of lines in the file
-
-                # One iterating through the file doesn't take too long
-                # to get the exact number of rows
-                # num_rows = sum(1 for _ in iter(csvfile))
-
-                # But we can get a really good approximation by just measuring
-                # the first few lines
+                # Measure the bytes in the first N lines and take the average
                 num_lines_to_measure = 100
                 csvfile.seek(0, 2)
                 content_nbytes = total_nbytes - header_nbytes
@@ -162,8 +136,8 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 appprox_bytes_per_line = first_content_bytes / num_lines_to_measure
                 approx_num_rows = int(content_nbytes / appprox_bytes_per_line)
 
-                csv_fields = header.strip().split(',')
                 # Select the indexes of the columns we want
+                csv_fields = header.strip().split(',')
                 field_to_idx = {field: idx for idx, field in enumerate(csv_fields)}
                 col_indexes = [field_to_idx[k] for k in fields]
 
@@ -174,23 +148,11 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                     position=0, leave=True,
                 )
                 # Note: Manual iteration is 1.5x faster than DictReader
-                # 143,416.34it/s
                 for line in prog:
                     cols = line[:-1].split(',')
                     # Select the values to insert into the SQLite database
                     vals = [cols[idx] for idx in col_indexes]
                     cur.execute(insert_statement, vals)
-
-                # TODO: we can delete this code
-                # verus 95,770.39it/s
-                # csvfile.seek(0)
-                # reader = csv.DictReader(csvfile)
-                # prog = tqdm.tqdm(
-                #     reader, desc='insert csv rows into sqlite cache',
-                #     total=approx_num_rows, mininterval=3, maxinterval=30)
-                # for row in prog:
-                #     vals = [row[k] for k in fields]
-                #     cur.execute(insert_statement, vals)
 
             conn.commit()
         except Exception:
@@ -201,7 +163,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
         finally:
             cur.close()
 
-    # hack to not reconnect each time
+    # cache SQLite connections
     if sql_fpath in GLOBAL_SQLITE_CONNECTIONS:
         conn = GLOBAL_SQLITE_CONNECTIONS[sql_fpath]
     else:

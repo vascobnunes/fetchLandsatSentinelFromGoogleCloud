@@ -1,4 +1,10 @@
-"""TODO module documentation"""
+"""
+# FeLS - Fetch Landsat & Sentinel Data from Google Cloud
+Find and download Landsat and Sentinel-2 data from the public Google Cloud
+
+For more info see the
+`FeLS GitHub Page <https://github.com/vascobnunes/fetchLandsatSentinelFromGoogleCloud>`_
+"""
 from __future__ import absolute_import, division, print_function
 import argparse
 import datetime
@@ -13,8 +19,7 @@ from fels.landsat import (
     ensure_landsat_metadata)
 from fels.sentinel2 import (
     query_sentinel2_catalogue, get_sentinel2_image, safedir_to_datetime,
-    ensure_sentinel2_metadata
-)
+    ensure_sentinel2_metadata)
 
 
 @ubelt.memoize
@@ -22,12 +27,15 @@ def _memo_geopandas_read(path):
     return geopandas.read_file(path)
 
 
-def convert_wkt_to_scene(sat, geometry, include_overlap):
-    '''
+def convert_wkt_to_scene(sat, geometry, include_overlap, thresh=0.0):
+    """
     Args:
         sat: 'S2', 'ETM', 'OLI_TIRS'
         geometry: WKT or GeoJSON string
         include_overlap: if True, use predicate 'intersects', else use predicate 'contains'
+        thresh (float):
+            the fraction of a tile that must intersect and overlap with a
+            region.
 
     Returns:
         List of scenes containing the geometry
@@ -45,7 +53,7 @@ def convert_wkt_to_scene(sat, geometry, include_overlap):
         >>> include_overlap = True
         >>> convert_wkt_to_scene('S2', geometry, include_overlap)
         >>> convert_wkt_to_scene('LC', geometry, include_overlap)
-    '''
+    """
 
     if sat == 'S2':
         path = pkg_resources.resource_filename(__name__, os.path.join('data', 'sentinel_2_index_shapefile.shp'))
@@ -66,8 +74,6 @@ def convert_wkt_to_scene(sat, geometry, include_overlap):
     gdf = _memo_geopandas_read(path)
 
     if include_overlap:
-        # TODO paramatarize thresh
-        thresh = 0.0
         if thresh > 0:
             # Requires some minimum overlap
             overlap = gdf.geometry.intersection(feat).area / feat.area
@@ -105,35 +111,36 @@ def get_parser():
 
     parser = argparse.ArgumentParser(
         prog='fels', description=(
-            "Fels {version} - "
-            "Find and download Landsat and Sentinel-2 data from the public Google Cloud"
+            'Fels {version} - '
+            'Find and download Landsat and Sentinel-2 data from the public Google Cloud'
         ).format(**version_info)
     )
-    parser.add_argument("scene", nargs='?', help="WRS2 coordinates for Landsat (ex 198030) or MGRS for S2 (ex 52SDG). Mutually exclusive with --geometry", default=None)
-    parser.add_argument("sat", help="Which satellite are you looking for", choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], type=normalize_satcode, default='S2')
-    parser.add_argument("start_date", help="Start date, in format YYYY-MM-DD. Left-exclusive.", default=('2010-01-01'))
-    parser.add_argument("end_date", help="End date, in format YYYY-MM-DD. Right-exclusive.", default=('2020-01-01'))
-    parser.add_argument("-g", "--geometry", help="Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.", default=None)
-    parser.add_argument("-i", "--includeoverlap", help="If -g is used, include scenes that overlap the geometry but do not completely contain it", action='store_true', default=False)
-    parser.add_argument("--minoverlap", help="If -i is not used, include scenes that overlap the geometry but do not completely contain it", action='store_true', default=False)
-    parser.add_argument("-c", "--cloudcover", type=float, help="Set a limit to the cloud cover of the image", default=100)
-    parser.add_argument("-o", "--output", help="Where to download files", default=os.getcwd())
-    parser.add_argument("-e", "--excludepartial", help="Exclude partial tiles - only for Sentinel-2", default=False)
-    parser.add_argument("--latest", help="Limit to the latest scene", action="store_true", default=False)
-    parser.add_argument("--noinspire", help="Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)", action="store_true", default=False)
-    parser.add_argument("--outputcatalogs", help="Where to download metadata catalog files", default=None)
-    parser.add_argument("--overwrite", help="Overwrite files if existing locally", action="store_true", default=False)
-    parser.add_argument("-l", "--list", help="List available download urls and exit without downloading", action="store_true", default=False)
-    parser.add_argument("-d", "--dates", help="List or return dates instead of download urls", action="store_true", default=False)
-    parser.add_argument("-r", "--reject_old", help="For S2, skip redundant old-format (before Nov 2016) images", action="store_true", default=False)
-    parser.add_argument("--version", action='version', version='{version}'.format(**version_info))
+    parser.add_argument('scene', nargs='?', help='WRS2 coordinates for Landsat (ex 198030) or MGRS for S2 (ex 52SDG). Mutually exclusive with --geometry', default=None)
+    parser.add_argument('sat', help='Which satellite are you looking for', choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], type=normalize_satcode, default='S2')
+    parser.add_argument('start_date', help='Start date, in format YYYY-MM-DD. Left-exclusive.', default=('2010-01-01'))
+    parser.add_argument('end_date', help='End date, in format YYYY-MM-DD. Right-exclusive.', default=('2020-01-01'))
+    parser.add_argument('-g', '--geometry', help='Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.', default=None)
+    parser.add_argument('-i', '--includeoverlap', help='If -g is used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
+    parser.add_argument('--minoverlap', help='If -i is not used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
+    parser.add_argument('-c', '--cloudcover', type=float, help='Set a limit to the cloud cover of the image', default=100)
+    parser.add_argument('-o', '--output', help='Where to download files', default=os.getcwd())
+    parser.add_argument('-e', '--excludepartial', help='Exclude partial tiles - only for Sentinel-2', default=False)
+    parser.add_argument('--latest', help='Limit to the latest scene', action='store_true', default=False)
+    parser.add_argument('--noinspire', help='Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)', action='store_true', default=False)
+    parser.add_argument('--outputcatalogs', help='Where to download metadata catalog files', default=None)
+    parser.add_argument('--overwrite', help='Overwrite files if existing locally', action='store_true', default=False)
+    parser.add_argument('-l', '--list', help='List available download urls and exit without downloading', action='store_true', default=False)
+    parser.add_argument('-d', '--dates', help='List or return dates instead of download urls', action='store_true', default=False)
+    parser.add_argument('-r', '--reject_old', help='For S2, skip redundant old-format (before Nov 2016) images', action='store_true', default=False)
+    parser.add_argument('-t', '--thresh', help='Only select intersecting areas where the fraction of the tile that overlaps with the spatial region is greater than this threshol', default=0.0)
+    parser.add_argument('--version', action='version', version='{version}'.format(**version_info))
     return parser
 
 
 def main():
-    '''
+    """
     CLI entrypoint.
-    '''
+    """
     options = get_parser().parse_args()
 
     if not options.outputcatalogs:
@@ -147,10 +154,11 @@ def main():
 
 
 def run_fels(*args, **kwargs):
-    '''
+    """
     Python entrypoint.
 
     See main() for arguments. Additional options not present in argparse include
+
     Args:
         scene: for Landsat, can pass in a (path,row) tuple such as (115,34)
         sat: 'L5', 'L7', 'L8' are aliases for 'TM', 'ETM', 'OLI_TIRS'
@@ -168,7 +176,7 @@ def run_fels(*args, **kwargs):
         >>> from datetime import date
         >>> from fels import run_fels
         >>> run_fels((203,31), 'L8', date(2015, 1, 1), date(2015, 6, 30), cloudcover=30, output='.', latest=True, outputcatalogs=os.path.expanduser('~/data/fels/'))
-    '''
+    """
     # Parse args via
     options = _get_options(*args, **kwargs)
     # call fels
@@ -242,7 +250,7 @@ def _get_options(*args, **kwargs):
 
 
 def _run_fels(options):
-    '''
+    """
     Search the catalogs for matching images, download them (if list==False) and return the list of urls.
 
     Example:
@@ -265,10 +273,10 @@ def _run_fels(options):
         >>> options = _get_options(**kwargs)
         >>> print('options.__dict__ = {}'.format(ubelt.repr2(options.__dict__, nl=1)))
         >>> _run_fels(options)
-    '''
+    """
 
     if not options.scene and options.geometry:
-        scenes = convert_wkt_to_scene(options.sat, options.geometry, options.includeoverlap)
+        scenes = convert_wkt_to_scene(options.sat, options.geometry, options.includeoverlap, options.thresh)
         if len(scenes) > 0:
             for i, s in enumerate(scenes):
                 print(f'Converted WKT to scene: {s} [{i+1}/{len(scenes)}]')
@@ -289,13 +297,13 @@ def _run_fels(options):
                 options.start_date, options.end_date, scene, options.latest,
                 use_sql=True)
             if not url:
-                print("No image was found with the criteria you chose! Please review your parameters and try again.")
+                print('No image was found with the criteria you chose! Please review your parameters and try again.')
             else:
-                print("Found {} files.".format(len(url)))
+                print('Found {} files.'.format(len(url)))
                 if not options.list:
                     valid_mask = []
                     for i, u in enumerate(url):
-                        print("Downloading {} of {}...".format(i + 1, len(url)))
+                        print('Downloading {} of {}...'.format(i + 1, len(url)))
                         ok = get_sentinel2_image(
                             u, options.output, options.overwrite,
                             options.excludepartial, options.noinspire,
@@ -314,12 +322,12 @@ def _run_fels(options):
                 options.latest, use_sql=True)
 
             if not url:
-                print("No image was found with the criteria you chose! Please review your parameters and try again.")
+                print('No image was found with the criteria you chose! Please review your parameters and try again.')
             else:
-                print("Found {} files.".format(len(url)))
+                print('Found {} files.'.format(len(url)))
                 for i, u in enumerate(url):
                     if not options.list:
-                        print("Downloading {} of {}...".format(i + 1, len(url)))
+                        print('Downloading {} of {}...'.format(i + 1, len(url)))
                         get_landsat_image(u, options.output, options.overwrite, options.sat)
 
         if options.dates:
@@ -338,5 +346,5 @@ def _run_fels(options):
     return result
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

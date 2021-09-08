@@ -1,15 +1,16 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 import csv
 import datetime
-import os
-import sys
-import shutil
+import dateutil
 import glob
 import numpy as np
+import os
+import shutil
+import sys
+import ubelt
 import xml.etree.ElementTree as ET
 from tempfile import NamedTemporaryFile
-import ubelt
-import dateutil
 try:
     from urllib2 import urlopen
     from urllib2 import HTTPError
@@ -17,8 +18,7 @@ except ImportError:
     from urllib.request import urlopen, HTTPError
 
 from fels.utils import (
-    sort_url_list, download_file, download_metadata_file,
-    ensure_sqlite_csv_conn)
+    sort_url_list, download_metadata_file, ensure_sqlite_csv_conn)
 
 
 SENTINEL2_METADATA_URL = 'http://storage.googleapis.com/gcp-public-data-sentinel-2/index.csv.gz'
@@ -118,12 +118,19 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
         >>> print(results[-1])
         >>> print('results = {!r}'.format(len(results)))
     """
-    print("Searching for Sentinel-2 images in catalog...")
+    print('Searching for Sentinel-2 images in catalog...')
     if use_sql:
-        # hack for faster query
+        # Generally SQL is faster
         return query_sentinel2_with_sqlite(collection_file, cc_limit,
                                            date_start, date_end, tile,
                                            latest=latest)
+    else:
+        return query_sentinel2_with_csv(collection_file, cc_limit, date_start,
+                                        date_end, tile, latest=latest)
+
+
+def query_sentinel2_with_csv(collection_file, cc_limit, date_start, date_end,
+                             tile, latest=False):
     cc_values = []
     all_urls = []
     all_acqdates = []
@@ -160,12 +167,12 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
     """
     img = os.path.basename(url)
     target_path = os.path.join(outputdir, img)
-    target_manifest = os.path.join(target_path, "manifest.safe")
+    target_manifest = os.path.join(target_path, 'manifest.safe')
 
     return_status = True
     if not os.path.exists(target_path) or overwrite:
 
-        manifest_url = url + "/manifest.safe"
+        manifest_url = url + '/manifest.safe'
 
         if reject_old:
             # check contents of manifest before downloading the rest
@@ -189,12 +196,12 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
                 if not os.path.exists(os.path.dirname(abs_path)):
                     os.makedirs(os.path.dirname(abs_path))
                 try:
-                    download_file(url + rel_path, abs_path)
+                    ubelt.download(url + rel_path, fpath=abs_path)
                 except HTTPError as error:
-                    print("Error downloading {} [{}]".format(url + rel_path, error))
+                    print('Error downloading {} [{}]'.format(url + rel_path, error))
                     continue
-        granule = os.path.dirname(os.path.dirname(get_S2_image_bands(target_path, "B01")))
-        for extra_dir in ("AUX_DATA", "HTML"):
+        granule = os.path.dirname(os.path.dirname(get_S2_image_bands(target_path, 'B01')))
+        for extra_dir in ('AUX_DATA', 'HTML'):
             if not os.path.exists(os.path.join(target_path, extra_dir)):
                 os.makedirs(os.path.join(target_path, extra_dir))
             if not os.path.exists(os.path.join(granule, extra_dir)):
@@ -206,13 +213,13 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
         return_status = False
 
     if partial:
-        tile_chk = check_full_tile(get_S2_image_bands(target_path, "B01"))
+        tile_chk = check_full_tile(get_S2_image_bands(target_path, 'B01'))
         if tile_chk == 'Partial':
-            print("Removing partial tile image files...")
+            print('Removing partial tile image files...')
             shutil.rmtree(target_path)
             return_status = False
     if not noinspire:
-        inspire_file = os.path.join(target_path, "INSPIRE.xml")
+        inspire_file = os.path.join(target_path, 'INSPIRE.xml')
         if os.path.isfile(inspire_file):
             inspire_path = get_S2_INSPIRE_title(inspire_file)
             if os.path.basename(target_path) != inspire_path:
@@ -226,11 +233,11 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
 
 def get_S2_image_bands(image_path, band):
     image_name = os.path.basename(image_path)
-    tile = image_name.split("_")[5]
+    tile = image_name.split('_')[5]
     list_dirs = os.listdir(os.path.join(image_path, 'GRANULE'))
     match = [x for x in list_dirs if x.find(tile) > 0][0]
     list_files = os.path.join(image_path, 'GRANULE', match, 'IMG_DATA')
-    files = glob.glob(list_files + "/*.jp2")
+    files = glob.glob(list_files + '/*.jp2')
     match_band = [x for x in files if x.find(band) > 0][0]
     return match_band
 
@@ -238,17 +245,17 @@ def get_S2_image_bands(image_path, band):
 def get_S2_INSPIRE_title(image_inspire_xml):
     tree = ET.parse(image_inspire_xml)
     chartstring_element = tree.findall(
-        ".//{http://www.isotc211.org/2005/gmd}identificationInfo/{http://www.isotc211.org/2005/gmd}MD_DataIdentification/{http://www.isotc211.org/2005/gmd}citation/{http://www.isotc211.org/2005/gmd}CI_Citation/{http://www.isotc211.org/2005/gmd}title/{http://www.isotc211.org/2005/gco}CharacterString")
+        './/{http://www.isotc211.org/2005/gmd}identificationInfo/{http://www.isotc211.org/2005/gmd}MD_DataIdentification/{http://www.isotc211.org/2005/gmd}citation/{http://www.isotc211.org/2005/gmd}CI_Citation/{http://www.isotc211.org/2005/gmd}title/{http://www.isotc211.org/2005/gco}CharacterString')
     s2_file_inspire_title = chartstring_element[0].text
     return s2_file_inspire_title
 
 
 def check_full_tile(image):
     try:
-        # NOTE: gdal has large import time overhead, and only is used in one
-        # specific case. Executing it as a nested import allows it to be an
-        # optional dependency and decreases the import time from 3.73 seconds
-        # to 0.35 seconds.
+        # NOTE: gdal can have a large import time overhead, (depending on how it
+        # is compiled), and only is used in one specific case. Executing it as
+        # a nested import allows it to be an optional dependency and decreases
+        # the import time from 3.73 seconds to 0.35 seconds.
         from osgeo import gdal
     except ImportError:
         raise ImportError("""Could not find the GDAL/OGR Python library bindings. Using conda \
@@ -283,11 +290,11 @@ def check_full_tile(image):
                 break
     for key in sorted(count.keys()):
         if count[key] is not None:
-            return "Partial"
+            return 'Partial'
 
 
 def is_new(safedir_or_manifest):
-    '''
+    """
     Check if a S2 scene is in the new (after Nov 2016) format.
 
     If the scene is already downloaded, the safedir directory structure can be crawled to determine this.
@@ -300,7 +307,7 @@ def is_new(safedir_or_manifest):
         >>> manifest = os.path.join(safedir, 'manifest.safe')
         >>> assert is_new(safedir) == False
         >>> assert is_new(manifest) == False
-    '''
+    """
     if os.path.isdir(safedir_or_manifest):
         safedir = safedir_or_manifest
         # if this file does not have the standard name (len==0), the scene is old format.
@@ -318,7 +325,7 @@ def is_new(safedir_or_manifest):
 
 
 def _dedupe(safedirs, to_return=None):
-    '''
+    """
     Remove old-format scenes from a list of Google Cloud S2 safedirs
 
     WARNING: this heuristic is usually, but not always, true.
@@ -333,7 +340,7 @@ def _dedupe(safedirs, to_return=None):
     Args:
         to_return: a list of other products (eg urls) indexed to safedirs.
             if provided, dedupe this as well.
-    '''
+    """
     _safedirs = np.array(sorted(safedirs))
     datetimes = [safedir_to_datetime(s) for s in _safedirs]
     # prods = [safedir_to_datetime(s, product=True) for s in _safedirs]
@@ -346,7 +353,7 @@ def _dedupe(safedirs, to_return=None):
 
 
 def safedir_to_datetime(string, product=False):
-    '''
+    """
     Example:
         >>> from datetime import datetime
         >>> s = 'S2B_MSIL1C_20181010T021649_N0206_R003_T52SDG_20181010T064007.SAFE'
@@ -355,7 +362,7 @@ def safedir_to_datetime(string, product=False):
 
     References:
         https://sentinel.esa.int/web/sentinel/user-guides/sentinel-2-msi/naming-convention
-    '''
+    """
     if not product:
         dt_str = string.split('_')[2]  # this is the "datatake sensing time"
     else:
