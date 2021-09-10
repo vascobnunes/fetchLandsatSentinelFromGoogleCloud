@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # =============================================================================================
 # Copyright 2018 dgketchum
 #
@@ -18,23 +19,26 @@ __dev__ = """
 # Command to autogenerate this init file
 mkinit -m fels --relative -w
 """
+
+__version__ = '1.4.0'
+
+
+# Used by mkinit to expose the following modules an all fels attributes.
+__submodules__ = {
+    'fels': None,
+    'landsat': [],
+    'utils': [],
+    'sentinel2': [],
+}
+
+
 from . import fels
 from . import landsat
 from . import sentinel2
 from . import utils
 
-from .fels import (convert_wkt_to_scene, get_parser, main, run_fels,)
-from .landsat import (get_landsat_image, landsatdir_to_date,
-                      query_landsat_catalogue,)
-from .sentinel2 import (check_full_tile, get_S2_INSPIRE_title,
-                        get_S2_image_bands, get_sentinel2_image, is_new,
-                        query_sentinel2_catalogue, safedir_to_datetime,)
-from .utils import (download_file, download_metadata_file, sort_url_list,)
+from .fels import (convert_wkt_to_scene, get_parser, main, normalize_satcode,
+                   run_fels,)
 
-__all__ = ['check_full_tile', 'convert_wkt_to_scene', 'download_file',
-           'download_metadata_file', 'fels', 'get_S2_INSPIRE_title',
-           'get_S2_image_bands', 'get_landsat_image', 'get_parser',
-           'get_sentinel2_image', 'is_new', 'landsat', 'landsatdir_to_date',
-           'main', 'query_landsat_catalogue', 'query_sentinel2_catalogue',
-           'run_fels', 'safedir_to_datetime', 'sentinel2', 'sort_url_list',
-           'utils']
+__all__ = ['convert_wkt_to_scene', 'fels', 'get_parser', 'landsat', 'main',
+           'normalize_satcode', 'run_fels', 'sentinel2', 'utils']
