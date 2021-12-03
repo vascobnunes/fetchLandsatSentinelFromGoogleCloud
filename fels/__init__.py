@@ -20,7 +20,7 @@ __dev__ = """
 mkinit -m fels --relative -w
 """
 
-__version__ = '1.4.0'
+__version__ = '1.5.0'
 
 
 # Used by mkinit to expose the following modules an all fels attributes.
