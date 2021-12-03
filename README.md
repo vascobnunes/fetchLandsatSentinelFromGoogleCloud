@@ -1,5 +1,6 @@
 # FeLS - Fetch Landsat & Sentinel Data from Google Cloud
 
+[![GithubActions](https://github.com/vascobnunes/fetchLandsatSentinelFromGoogleCloud/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/vascobnunes/fetchLandsatSentinelFromGoogleCloud/actions?query=branch%3Amaster)
 [![Pypi](https://img.shields.io/pypi/v/fels.svg)](https://pypi.python.org/pypi/fels)
 [![Downloads](https://img.shields.io/pypi/dm/fels.svg)](https://pypistats.org/packages/fels)
 [![Docs](https://img.shields.io/badge/github.io-documentation-forestgreen)](https://vascobnunes.github.io/fetchLandsatSentinelFromGoogleCloud/)
