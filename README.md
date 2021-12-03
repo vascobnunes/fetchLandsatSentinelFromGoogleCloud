@@ -1,4 +1,11 @@
 # FeLS - Fetch Landsat & Sentinel Data from Google Cloud
+
+[![GithubActions](https://github.com/vascobnunes/fetchLandsatSentinelFromGoogleCloud/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/vascobnunes/fetchLandsatSentinelFromGoogleCloud/actions?query=branch%3Amaster)
+[![Pypi](https://img.shields.io/pypi/v/fels.svg)](https://pypi.python.org/pypi/fels)
+[![Downloads](https://img.shields.io/pypi/dm/fels.svg)](https://pypistats.org/packages/fels)
+[![Docs](https://img.shields.io/badge/github.io-documentation-forestgreen)](https://vascobnunes.github.io/fetchLandsatSentinelFromGoogleCloud/)
+
+
 Find and download Landsat and Sentinel-2 data from the public Google Cloud
 
 The script downloads the index.csv file listing all available Landsat or
@@ -148,6 +155,13 @@ optional arguments:
 You can read more about the public google access to Landsat and Sentinel-2 data here: https://cloud.google.com/storage/docs/public-datasets/
 
 Contributors (THANK YOU!):
+ - https://github.com/vascobnunes
  - https://github.com/framioco
  - https://github.com/bendv
  - https://github.com/GreatEmerald
+ - https://github.com/dgketchum
+ - https://github.com/eriFelaP
+ - https://github.com/JuraBit
+ - https://github.com/matt-bernstein
+ - https://github.com/Erotemic
+ - https://github.com/banesullivan
