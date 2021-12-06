@@ -22,18 +22,19 @@ def download_metadata_file(url, outputdir, program):
     if outputdir is None:
         outputdir = FELS_DEFAULT_OUTPUTDIR
     zipped_index_path = os.path.join(outputdir, 'index_' + program + '.csv.gz')
-    if not os.path.isfile(zipped_index_path):
-        if not os.path.exists(os.path.dirname(zipped_index_path)):
-            os.makedirs(os.path.dirname(zipped_index_path))
-        print('Downloading Metadata file...')
-        print('url = {!r}'.format(url))
-        print('outputdir = {!r}'.format(outputdir))
-        ubelt.download(url, fpath=zipped_index_path, chunksize=int(2 ** 22))
     index_path = os.path.join(outputdir, 'index_' + program + '.csv')
     if not os.path.isfile(index_path):
+        if not os.path.isfile(zipped_index_path):
+            if not os.path.exists(os.path.dirname(zipped_index_path)):
+                os.makedirs(os.path.dirname(zipped_index_path))
+            print('Downloading Metadata file...')
+            print('url = {!r}'.format(url))
+            print('outputdir = {!r}'.format(outputdir))
+            ubelt.download(url, fpath=zipped_index_path, chunksize=int(2 ** 22))
         print('Unzipping Metadata file...')
         with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as f:
             shutil.copyfileobj(gzip_index, f)
+        ubelt.delete(zipped_index_path)  # remove archive file
     return index_path
 
 
