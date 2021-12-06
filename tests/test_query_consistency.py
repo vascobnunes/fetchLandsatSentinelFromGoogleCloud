@@ -4,10 +4,10 @@ Test that the python API and CLI return the same results for equivalent queries
 """
 import json
 import os
-import shapely as shp
 import ubelt as ub
 import datetime
 import fels
+from shapely import geometry
 
 
 def _run_consistency_test(sensor,
@@ -21,7 +21,7 @@ def _run_consistency_test(sensor,
     outputcatalogs = os.path.expanduser('~/data/fels/')
     start_date_iso = start_date.isoformat()
     end_date_iso = end_date.isoformat()
-    wkt_geometry = shp.geometry.shape(geojson_geom).to_wkt()
+    wkt_geometry = geometry.shape(geojson_geom).wkt
     geojson_geom_text = json.dumps(geojson_geom)
     cloudcover = 30
 
