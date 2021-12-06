@@ -54,7 +54,10 @@ jobs:
         ls -al
         mkdir -p tmpdir
         cd tmpdir
-        xdoctest -m fels
+        #xdoctest -m fels
+        FELS_INSTALL_DIR=$(python -c "import fels, os; print(os.path.dirname(fels.__file__))")
+        echo "FELS_INSTALL_DIR = $FELS_INSTALL_DIR"
+        pytest --verbose --xdoctest --cov-report term --cov=fels ../tests $FELS_INSTALL_DIR
 
     - name: Upload Wheel artifact
       uses: actions/upload-artifact@v2

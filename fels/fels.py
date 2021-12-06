@@ -138,7 +138,7 @@ def get_parser():
     parser.add_argument('-l', '--list', help='List available download urls and exit without downloading', action='store_true', default=False)
     parser.add_argument('-d', '--dates', help='List or return dates instead of download urls', action='store_true', default=False)
     parser.add_argument('-r', '--reject_old', help='For S2, skip redundant old-format (before Nov 2016) images', action='store_true', default=False)
-    parser.add_argument('-t', '--thresh', help='Only select intersecting areas where the fraction of the tile that overlaps with the spatial region is greater than this threshol', default=0.0)
+    parser.add_argument('-t', '--thresh', help='Only select intersecting areas where the fraction of the tile that overlaps with the spatial region is greater than this threshold', default=0.0)
     parser.add_argument('--use_csv', action='store_true', dest='use_csv', help='use the direct csv query instead of sqlite3 (only useful if you are doing 1 query for the first time)')
     parser.add_argument('--version', action='version', version='{version}'.format(**version_info))
     return parser
@@ -223,7 +223,6 @@ def _get_options(*args, **kwargs):
             scene = str(scene[0]).zfill(3) + str(scene[1]).zfill(3)
         kwargs['scene'] = scene
 
-    print('start_date = {!r}'.format(start_date))
     if isinstance(end_date, datetime.date):
         end_date = kwargs['end_date'] = datetime.date.isoformat(end_date)
     if isinstance(start_date, datetime.date):
@@ -241,7 +240,6 @@ def _get_options(*args, **kwargs):
 
     kwargs['sat'] = sat
 
-    print('start_date = {!r}'.format(start_date))
     defaults = get_parser().parse_args([scene, sat, start_date, end_date])
 
     # overwrite with user-defined kwargs
@@ -341,7 +339,7 @@ def _run_fels(options):
             dirs = [u.split('/')[-1] for u in url]
             if options.sat == 'S2':
                 datetimes = [safedir_to_datetime(d) for d in dirs]
-                dates = [dt.dates() for dt in datetimes]
+                dates = [dt.date() for dt in datetimes]
             else:
                 dates = [landsatdir_to_date(d) for d in dirs]
 

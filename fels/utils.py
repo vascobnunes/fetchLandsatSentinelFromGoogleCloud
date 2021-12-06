@@ -150,6 +150,8 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 for line in prog:
                     cols = line[:-1].split(',')
                     # Select the values to insert into the SQLite database
+                    # Note: if this fails with an index error, its possible
+                    # the CSV file was not fully downloaded
                     vals = [cols[idx] for idx in col_indexes]
                     cur.execute(insert_statement, vals)
 
