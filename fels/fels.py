@@ -113,6 +113,7 @@ def normalize_satcode(sat):
 
 def get_parser():
     import fels
+    from fels.utils import FELS_DEFAULT_OUTPUTDIR
     version_info = {'version': fels.__version__}
 
     parser = argparse.ArgumentParser(
@@ -129,11 +130,11 @@ def get_parser():
     parser.add_argument('-i', '--includeoverlap', help='If -g is used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
     parser.add_argument('--minoverlap', help='If -i is not used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
     parser.add_argument('-c', '--cloudcover', type=float, help='Set a limit to the cloud cover of the image', default=100)
-    parser.add_argument('-o', '--output', help='Where to download files', default=os.getcwd())
+    parser.add_argument('-o', '--output', help='Where to download files. Defaults to current directory.', default=os.getcwd())
     parser.add_argument('-e', '--excludepartial', help='Exclude partial tiles - only for Sentinel-2', default=False)
     parser.add_argument('--latest', help='Limit to the latest scene (with lowest cloudcover)', action='store_true', default=False)
     parser.add_argument('--noinspire', help='Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)', action='store_true', default=False)
-    parser.add_argument('--outputcatalogs', help='Where to download metadata catalog files', default=None)
+    parser.add_argument('--outputcatalogs', help='Where to download metadata catalog files. If unspecified uses {}'.format(FELS_DEFAULT_OUTPUTDIR), default=None)
     parser.add_argument('--overwrite', help='Overwrite files if existing locally', action='store_true', default=False)
     parser.add_argument('-l', '--list', help='List available download urls and exit without downloading', action='store_true', default=False)
     parser.add_argument('-d', '--dates', help='List or return dates instead of download urls', action='store_true', default=False)

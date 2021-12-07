@@ -33,8 +33,12 @@ install the gdal dependency from conda-forge
 
 ```
 conda config --add channels conda-forge
-conda install gdal
+conda install gdal fiona geopandas shapely
 ```
+
+Note: gdal, fiona, geopandas, and shapely rely on c-libraries and might need to
+be built on your system if you install them via pip. Thus it is important that
+you install them with conda before you `pip install fels`.
 
 ## Examples
 

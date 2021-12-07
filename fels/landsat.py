@@ -95,7 +95,7 @@ def _query_landsat_with_csv(collection_file, cc_limit, date_start, date_end,
     all_acqdates = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in ubelt.ProgIter(reader, desc='searching', freq=10000):
+        for row in ubelt.ProgIter(reader, desc='searching'):
             year_acq = int(row['DATE_ACQUIRED'][0:4])
             month_acq = int(row['DATE_ACQUIRED'][5:7])
             day_acq = int(row['DATE_ACQUIRED'][8:10])
