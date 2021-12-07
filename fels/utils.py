@@ -34,19 +34,63 @@ def download_metadata_file(url, outputdir, program):
         print('Unzipping Metadata file...')
         with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as f:
             shutil.copyfileobj(gzip_index, f)
-        ubelt.delete(zipped_index_path)  # remove archive file
+        # ubelt.delete(zipped_index_path)  # remove archive file?
     return index_path
 
 
 def sort_url_list(cc_values, all_acqdates, all_urls):
-    """Sort the url list by increasing cc_values and acqdate."""
-    cc_values = sorted(cc_values)
-    all_acqdates = sorted(all_acqdates, reverse=True)
-    all_urls = [x for (y, z, x) in sorted(zip(cc_values, all_acqdates, all_urls))]
-    urls = []
-    for url in all_urls:
-        urls.append('http://storage.googleapis.com/' + url.replace('gs://', ''))
-    return urls
+    """
+    Sort the url list, first by ascending cc_values, and then by descending
+    acqdate. Also replaces the gs:// prefix with the google api http prefix.
+
+    Args:
+        cc_values (List[float]): cloud cover for each item
+        all_acqdates (List[datetime.datetime]): datetime for each item
+        all_urls (List[str]): url for each item
+
+    Returns:
+        List[str]: sorted and modified urls
+
+    Example:
+        >>> from fels.utils import *  # NOQA
+        >>> import datetime
+        >>> cc_values = [2.11, 1.85, 18.51, 2.85, 3.92, 18.32]
+        >>> all_acqdates = [datetime.datetime(2015, 3, 31, 0, 0),
+        >>>                 datetime.datetime(2015, 6, 19, 0, 0),
+        >>>                 datetime.datetime(2015, 2, 27, 0, 0),
+        >>>                 datetime.datetime(2015, 1, 26, 0, 0),
+        >>>                 datetime.datetime(2015, 3, 15, 0, 0),
+        >>>                 datetime.datetime(2015, 6, 3, 0, 0)]
+        >>> all_urls = ['gs://test_url_{}'.format(i) for i in range(len(cc_values))]
+        >>> sorted_urls = sort_url_list(cc_values, all_acqdates, all_urls)
+        >>> print('sorted_urls = {}'.format(ubelt.repr2(sorted_urls, nl=1)))
+        sorted_urls = [
+            'http://storage.googleapis.com/test_url_1',
+            'http://storage.googleapis.com/test_url_0',
+            'http://storage.googleapis.com/test_url_3',
+            'http://storage.googleapis.com/test_url_4',
+            'http://storage.googleapis.com/test_url_5',
+            'http://storage.googleapis.com/test_url_2',
+        ]
+    """
+    # For implementation clarity, table-like list of dictionary rows
+    rows = [
+        {'cc': cc, 'date': date, 'url': url}
+        for cc, date, url in zip(cc_values, all_acqdates, all_urls)
+    ]
+    # First group and sort by ascending cloudcover
+    cc_to_rows = ubelt.group_items(rows, key=lambda row: row['cc'])
+    cc_to_rows = ubelt.sorted_keys(cc_to_rows)
+
+    sorted_urls = []
+    for cc, group in cc_to_rows.items():
+        # Then within each group, sort by descending date
+        group = sorted(group, key=lambda row: (row['date'], row['url']), reverse=True)
+        for row in group:
+            url = row['url']
+            new_url = 'http://storage.googleapis.com/' + url.replace('gs://', '')
+            sorted_urls.append(new_url)
+    return sorted_urls
 
 
 def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
@@ -144,7 +188,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 prog = tqdm.tqdm(
                     iter(csvfile),
                     desc='insert csv rows into sqlite cache',
-                    total=approx_num_rows, mininterval=1, maxinterval=15,
+                    total=approx_num_rows, mininterval=3.0, maxinterval=15.0,
                     position=0, leave=True,
                 )
                 # Note: Manual iteration is 1.5x faster than DictReader
