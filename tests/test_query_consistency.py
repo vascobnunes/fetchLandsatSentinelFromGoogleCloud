@@ -22,7 +22,7 @@ def _run_consistency_test(sensor,
                           expected_dates
                           ):
     from fels.utils import FELS_DEFAULT_OUTPUTDIR
-    outputcatalogs = FELS_DEFAULT_OUTPUTDIR + '-3'
+    outputcatalogs = FELS_DEFAULT_OUTPUTDIR
 
     start_date_iso = start_date.isoformat()
     end_date_iso = end_date.isoformat()
