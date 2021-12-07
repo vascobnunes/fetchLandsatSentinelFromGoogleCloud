@@ -77,6 +77,10 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
 
 def _query_sentinel2_with_csv(collection_file, cc_limit, date_start, date_end,
                               tile, latest=False):
+    if isinstance(date_start, str):
+        date_start = dateutil.parser.isoparse(date_start)
+    if isinstance(date_end, str):
+        date_end = dateutil.parser.isoparse(date_end)
     cc_values = []
     all_urls = []
     all_acqdates = []

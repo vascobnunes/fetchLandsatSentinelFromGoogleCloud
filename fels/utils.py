@@ -34,7 +34,7 @@ def download_metadata_file(url, outputdir, program):
         print('Unzipping Metadata file...')
         with gzip.open(zipped_index_path) as gzip_index, open(index_path, 'wb') as f:
             shutil.copyfileobj(gzip_index, f)
-        ubelt.delete(zipped_index_path)  # remove archive file
+        # ubelt.delete(zipped_index_path)  # remove archive file?
     return index_path
 
 

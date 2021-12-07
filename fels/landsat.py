@@ -85,12 +85,16 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
 
 def _query_landsat_with_csv(collection_file, cc_limit, date_start, date_end,
                             wr2path, wr2row, sensor, latest=False):
+    if isinstance(date_start, str):
+        date_start = dateutil.parser.isoparse(date_start)
+    if isinstance(date_end, str):
+        date_end = dateutil.parser.isoparse(date_end)
     cc_values = []
     all_urls = []
     all_acqdates = []
     with open(collection_file) as csvfile:
         reader = csv.DictReader(csvfile)
-        for row in ubelt.ProgIter(reader, desc='searching'):
+        for row in ubelt.ProgIter(reader, desc='searching', freq=10000):
             year_acq = int(row['DATE_ACQUIRED'][0:4])
             month_acq = int(row['DATE_ACQUIRED'][5:7])
             day_acq = int(row['DATE_ACQUIRED'][8:10])
