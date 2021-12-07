@@ -26,8 +26,9 @@ def ensure_landsat_metadata(outputdir=None):
     return download_metadata_file(LANDSAT_METADATA_URL, outputdir, 'Landsat')
 
 
-def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2path, wr2row,
-                            sensor, latest=False, use_csv=False):
+def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end,
+                            wr2path, wr2row, sensor, latest=False,
+                            use_csv=False):
     """
     Query the Landsat index catalogue and retrieve urls for the best images
     found.
@@ -39,8 +40,8 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
         >>> import json
         >>> collection_file = ensure_landsat_metadata()
         >>> cc_limit = 100
-        >>> date_start = dateutil.parser.isoparse('2016-03-14')
-        >>> date_end = dateutil.parser.isoparse('2016-03-16')
+        >>> date_start = dateutil.parser.isoparse('2015-01-01')
+        >>> date_end = dateutil.parser.isoparse('2016-01-01')
         >>> geometry = json.dumps({
         >>>     'type': 'Polygon', 'coordinates': [[
         >>>         [40.4700, -74.2700],
@@ -58,18 +59,18 @@ def query_landsat_catalogue(collection_file, cc_limit, date_start, date_end, wr2
         >>> results = query_landsat_catalogue(collection_file, cc_limit, date_start,
         >>>                         date_end, wr2path, wr2row, sensor,
         >>>                         latest, use_csv=False)
-        >>> print('results = {!r}'.format(results))
-        >>> date_start = dateutil.parser.isoparse('2010-01-01')
-        >>> date_end = dateutil.parser.isoparse('2020-01-01')
-        >>> results = query_landsat_catalogue(collection_file, cc_limit, date_start,
-        >>>                         date_end, wr2path, wr2row, sensor,
-        >>>                         latest, use_csv=False)
-        >>> print('results = {!r}'.format(results))
-        >>> if 0:
-        >>>     # Very slow
-        >>>     query_landsat_catalogue(collection_file, cc_limit, date_start,
-        >>>                             date_end, wr2path, wr2row, sensor,
-        >>>                             latest, use_csv=True)
+        >>> print('results = {}'.format(ubelt.repr2(results, nl=1)))
+        results = [
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20151226_20170331_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20151108_20170402_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20151023_20170402_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20150209_20170413_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20150108_20180524_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20150124_20170413_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20151210_20170401_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20151124_20170401_01_T2',
+            'http://storage.googleapis.com/gcp-public-data-landsat/LC08/01/141/112/LC08_L1GT_141112_20150225_20170412_01_T2',
+        ]
     """
     print('Searching for Landsat-{} images in catalog...'.format(sensor))
     if use_csv:
@@ -101,7 +102,7 @@ def _query_landsat_with_csv(collection_file, cc_limit, date_start, date_end,
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if int(row['WRS_PATH']) == int(wr2path) and int(row['WRS_ROW']) == int(wr2row) \
                     and row['SENSOR_ID'] == sensor and float(row['CLOUD_COVER']) <= cc_limit \
-                    and date_start < acqdate < date_end:
+                    and date_start <= acqdate <= date_end:
                 all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)

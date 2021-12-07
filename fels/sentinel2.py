@@ -53,16 +53,14 @@ def query_sentinel2_catalogue(collection_file, cc_limit, date_start, date_end, t
         >>> scenes = convert_wkt_to_scene('S2', geometry, True)
         >>> tile = scenes[0]
         >>> latest = False
-        >>> query_sentinel2_catalogue(collection_file, cc_limit, date_start,
-        >>>                         date_end, tile, latest, use_csv=0)
-        >>> date_start = dateutil.parser.isoparse('2010-01-01')
-        >>> date_end = dateutil.parser.isoparse('2020-01-01')
-        >>> results = query_sentinel2_catalogue(collection_file, cc_limit, date_start,
-        >>>                         date_end, tile, latest, use_csv=0)
-        >>> print(results[0])
-        >>> print(results[len(results) // 2])
-        >>> print(results[-1])
-        >>> print('results = {!r}'.format(len(results)))
+        >>> results = query_sentinel2_catalogue(
+        >>>     collection_file, cc_limit, date_start, date_end, tile, latest,
+        >>>     use_csv=0)
+        >>> print('results = {}'.format(ubelt.repr2(results, nl=1)))
+        results = [
+            'http://storage.googleapis.com/gcp-public-data-sentinel-2/tiles/37/C/ET/S2A_MSIL1C_20161020T052712_N0204_R076_T37CET_20161020T052707.SAFE',
+            'http://storage.googleapis.com/gcp-public-data-sentinel-2/tiles/37/C/ET/S2A_MSIL1C_20161019T055712_N0204_R062_T37CET_20161019T055712.SAFE',
+        ]
     """
     print('Searching for Sentinel-2 images in catalog...')
     if use_csv:
@@ -92,7 +90,7 @@ def _query_sentinel2_with_csv(collection_file, cc_limit, date_start, date_end,
             day_acq = int(row['SENSING_TIME'][8:10])
             acqdate = datetime.datetime(year_acq, month_acq, day_acq)
             if row['MGRS_TILE'] == tile and float(row['CLOUD_COVER']) <= cc_limit \
-                    and date_start < acqdate < date_end:
+                    and date_start <= acqdate <= date_end:
                 all_urls.append(row['BASE_URL'])
                 cc_values.append(float(row['CLOUD_COVER']))
                 all_acqdates.append(acqdate)

@@ -82,23 +82,23 @@ You can use the Python entrypoint `fels.run_fels` in the same way as the `fels` 
 # CLI
 import os
 os.system(('fels OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o . -g "POINT (-105.2705 40.015)"'
-           '--latest --outputcatalogs ~/data/fels/'))
+           '--latest --outputcatalogs ~/.cache/fels/'))
 
 os.system(('fels OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o . -g \'{"type":"Point","coordinates":[-105.2705, 40.015]}\''
-           '--latest --outputcatalogs ~/data/fels/'))
+           '--latest --outputcatalogs ~/.cache/fels/'))
 
 # python
 from fels import run_fels
 urls = run_fels(None, 'OLI_TIRS', '2015-01-01', '2015-06-30', cloudcover=30, output='.',
                 geometry='POINT (-105.2705 40.015)',
-                latest=True, outputcatalogs=os.path.expanduser('~/data/fels/'))
+                latest=True, outputcatalogs=os.path.expanduser('~/.cache/fels/'))
 print(urls)
 
 # python with friendly aliases
 from datetime import date
 urls = run_fels(None, 'L8', date(2015, 1, 1), date(2015, 6, 30), cloudcover=30, output='.',
                 geometry={'type': 'Point', 'coordinates': [-105.2705, 40.015]},
-                latest=True, outputcatalogs=os.path.expanduser('~/data/fels/'))
+                latest=True, outputcatalogs=os.path.expanduser('~/.cache/fels/'))
 print(urls)
 ```
 

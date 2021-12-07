@@ -123,15 +123,15 @@ def get_parser():
     )
     parser.add_argument('scene', nargs='?', help='WRS2 coordinates for Landsat (ex 198030) or MGRS for S2 (ex 52SDG). Mutually exclusive with --geometry', default=None)
     parser.add_argument('sat', help='Which satellite are you looking for', choices=['TM', 'ETM', 'OLI_TIRS', 'S2'], type=normalize_satcode, default='S2')
-    parser.add_argument('start_date', help='Start date, in format YYYY-MM-DD. Note: Changed in 1.4.0 to be Left-inclusive in sqlite mode, but still Left-exclusive if use_csv.', default=('2010-01-01'))
-    parser.add_argument('end_date', help='End date, in format YYYY-MM-DD. Note: Changed in 1.4.0 to be Right-inclusive in sqlite mode, but still Right-exclusive if use_csv.', default=('2020-01-01'))
+    parser.add_argument('start_date', help='Start date, in format YYYY-MM-DD. Note: Changed in 1.5.0 to always be left-inclusive.', default=('2010-01-01'))
+    parser.add_argument('end_date', help='End date, in format YYYY-MM-DD. Note: Changed in 1.5.0 to always be right-inclusive.', default=('2020-01-01'))
     parser.add_argument('-g', '--geometry', help='Geometry to run search. Must be valid GeoJSON `geometry` or Well Known Text (WKT). This is only used if --scene is blank.', default=None)
     parser.add_argument('-i', '--includeoverlap', help='If -g is used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
     parser.add_argument('--minoverlap', help='If -i is not used, include scenes that overlap the geometry but do not completely contain it', action='store_true', default=False)
     parser.add_argument('-c', '--cloudcover', type=float, help='Set a limit to the cloud cover of the image', default=100)
     parser.add_argument('-o', '--output', help='Where to download files', default=os.getcwd())
     parser.add_argument('-e', '--excludepartial', help='Exclude partial tiles - only for Sentinel-2', default=False)
-    parser.add_argument('--latest', help='Limit to the latest scene', action='store_true', default=False)
+    parser.add_argument('--latest', help='Limit to the latest scene (with lowest cloudcover)', action='store_true', default=False)
     parser.add_argument('--noinspire', help='Do not rename output image folder to the title collected from the inspire.xml file (only for S2 datasets)', action='store_true', default=False)
     parser.add_argument('--outputcatalogs', help='Where to download metadata catalog files', default=None)
     parser.add_argument('--overwrite', help='Overwrite files if existing locally', action='store_true', default=False)
@@ -150,8 +150,9 @@ def main():
     """
     options = get_parser().parse_args()
 
-    if not options.outputcatalogs:
-        options.outputcatalogs = options.output
+    # Change behavior: if outputcatalogs is not specified, use the default
+    # if not options.outputcatalogs:
+    #     options.outputcatalogs = options.output
 
     urls_or_dates = _run_fels(options)
 
@@ -178,11 +179,11 @@ def run_fels(*args, **kwargs):
 
     Example:
         >>> # downloading a tile from the CLI
-        >>> os.system('fels 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o . --latest --outputcatalogs ~/data/fels/')
+        >>> os.system('fels 203031 OLI_TIRS 2015-01-01 2015-06-30 -c 30 -o . --latest')
         >>> # downloading the same tile in Python
         >>> from datetime import date
         >>> from fels import run_fels
-        >>> run_fels((203,31), 'L8', date(2015, 1, 1), date(2015, 6, 30), cloudcover=30, output='.', latest=True, outputcatalogs=os.path.expanduser('~/data/fels/'))
+        >>> run_fels((203,31), 'L8', date(2015, 1, 1), date(2015, 6, 30), cloudcover=30, output='.', latest=True)
     """
     # Parse args via
     options = _get_options(*args, **kwargs)
@@ -293,7 +294,6 @@ def _run_fels(options):
     # Run functions
     result = []
     for scene in scenes:
-
         if options.sat == 'S2':
             sentinel2_metadata_file = ensure_sentinel2_metadata(
                 options.outputcatalogs)
