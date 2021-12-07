@@ -188,7 +188,7 @@ def ensure_sqlite_csv_conn(collection_file, fields, table_create_cmd,
                 prog = tqdm.tqdm(
                     iter(csvfile),
                     desc='insert csv rows into sqlite cache',
-                    total=approx_num_rows, mininterval=1, maxinterval=15,
+                    total=approx_num_rows, mininterval=3.0, maxinterval=15.0,
                     position=0, leave=True,
                 )
                 # Note: Manual iteration is 1.5x faster than DictReader

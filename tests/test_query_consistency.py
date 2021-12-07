@@ -11,6 +11,7 @@ import datetime
 import fels
 from shapely import geometry
 import ubelt
+import sys
 
 
 def _run_consistency_test(sensor,
@@ -37,6 +38,43 @@ def _run_consistency_test(sensor,
     cli_nonurl_results = {}
 
     latest = False
+
+    fmtdict = dict(
+        sensor=sensor, sensor_alias=sensor_alias,
+        start_date_iso=start_date_iso, end_date_iso=end_date_iso,
+        outputcatalogs=outputcatalogs,
+        cloudcover=cloudcover,
+        python=sys.executable
+    )
+    if latest:
+        fmtdict['latestflag'] = '--latest'
+    else:
+        fmtdict['latestflag'] = ''
+
+    # Test CLI invocation
+    fmtdict1 = fmtdict.copy()
+    fmtdict1['geometry'] = wkt_geometry
+    cli_info1 = ub.cmd(ub.paragraph(
+        '''
+        {python} -m fels {sensor} {start_date_iso} {end_date_iso} -c {cloudcover} -o .
+        -g '{geometry}' {latestflag} --list --outputcatalogs "{outputcatalogs}"
+        ''').format(**fmtdict1), verbose=3)
+    # The last lines of the CLI output should be our expected results
+    cli_tail1 = cli_info1['out'].strip().split('\n')[-(len(expected_urls) + 1):]
+    cli_nonurl_results['1'] = cli_tail1[0]
+    cli_url_results['1'] = cli_tail1[1:]
+
+    fmtdict2 = fmtdict.copy()
+    fmtdict2['geometry'] = geojson_geom_text
+    cli_info2 = ub.cmd(ub.paragraph(
+        '''
+        {python} -m fels {sensor_alias} {start_date_iso} {end_date_iso} -c {cloudcover} -o .
+        -g '{geometry}' {latestflag} --list --outputcatalogs "{outputcatalogs}"
+        ''').format(**fmtdict2), verbose=3)
+    # The last lines of the CLI output should be our expected results
+    cli_tail2 = cli_info2['out'].strip().split('\n')[-(len(expected_urls) + 1):]
+    cli_nonurl_results['2'] = cli_tail2[0]
+    cli_url_results['2'] = cli_tail2[1:]
 
     # Test python invocation
     api_urls1 = fels.run_fels(
@@ -66,41 +104,6 @@ def _run_consistency_test(sensor,
         outputcatalogs=outputcatalogs,
         output='.', geometry=geojson_geom, latest=latest, dates=True,
         list=True)
-
-    fmtdict = dict(
-        sensor=sensor, sensor_alias=sensor_alias,
-        start_date_iso=start_date_iso, end_date_iso=end_date_iso,
-        outputcatalogs=outputcatalogs,
-        cloudcover=cloudcover)
-    if latest:
-        fmtdict['latestflag'] = '--latest'
-    else:
-        fmtdict['latestflag'] = ''
-
-    # Test CLI invocation
-    fmtdict1 = fmtdict.copy()
-    fmtdict1['geometry'] = wkt_geometry
-    cli_info1 = ub.cmd(ub.paragraph(
-        '''
-        fels {sensor} {start_date_iso} {end_date_iso} -c {cloudcover} -o .
-        -g '{geometry}' {latestflag} --list --outputcatalogs {outputcatalogs}
-        ''').format(**fmtdict1), verbose=3)
-    # The last lines of the CLI output should be our expected results
-    cli_tail1 = cli_info1['out'].strip().split('\n')[-(len(expected_urls) + 1):]
-    cli_nonurl_results['1'] = cli_tail1[0]
-    cli_url_results['1'] = cli_tail1[1:]
-
-    fmtdict2 = fmtdict.copy()
-    fmtdict2['geometry'] = geojson_geom_text
-    cli_info2 = ub.cmd(ub.paragraph(
-        '''
-        fels {sensor_alias} {start_date_iso} {end_date_iso} -c {cloudcover} -o .
-        -g '{geometry}' {latestflag} --list --outputcatalogs {outputcatalogs}
-        ''').format(**fmtdict2), verbose=3)
-    # The last lines of the CLI output should be our expected results
-    cli_tail2 = cli_info2['out'].strip().split('\n')[-(len(expected_urls) + 1):]
-    cli_nonurl_results['2'] = cli_tail2[0]
-    cli_url_results['2'] = cli_tail2[1:]
 
     conditions = {
         'dates should match': api_dates == expected_dates,
