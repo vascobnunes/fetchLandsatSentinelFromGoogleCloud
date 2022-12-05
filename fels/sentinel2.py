@@ -176,10 +176,12 @@ def get_sentinel2_image(url, outputdir, overwrite=False, partial=False, noinspir
         if reject_old:
             # check contents of manifest before downloading the rest
             content = urlopen(manifest_url)
-            with NamedTemporaryFile() as f:
-                shutil.copyfileobj(content, f)
-                if not is_new(f.name):
-                    return False
+            f = NamedTemporaryFile(delete=False)
+            shutil.copyfileobj(content, f)
+            if not is_new(f.name):
+                return False
+            f.close()
+            os.unlink(f.name)
 
         os.makedirs(target_path, exist_ok=True)
         content = urlopen(manifest_url)
